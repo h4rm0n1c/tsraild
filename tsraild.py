@@ -12,7 +12,6 @@ from typing import Dict, List, Optional, Set
 CONFIG_DIR = pathlib.Path(os.path.expanduser("~/.config/tsrail"))
 DATA_DIR = pathlib.Path(os.path.expanduser("~/.local/share/tsrail"))
 ASSETS_DIR = DATA_DIR / "assets"
-OVERLAY_DIR = DATA_DIR / "overlay"
 DEFAULT_OVERLAY_DIR = pathlib.Path(__file__).resolve().parent / "overlay"
 DEFAULT_ASSETS_DIR = DEFAULT_OVERLAY_DIR.parent / "assets"
 SOCKET_PATH = pathlib.Path(os.environ.get("XDG_RUNTIME_DIR", f"/run/user/{os.getuid()}")) / "tsrail.sock"
@@ -28,24 +27,6 @@ def ensure_dirs():
     CONFIG_DIR.mkdir(parents=True, exist_ok=True)
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     ASSETS_DIR.mkdir(parents=True, exist_ok=True)
-    OVERLAY_DIR.mkdir(parents=True, exist_ok=True)
-    seed_default_tree(DEFAULT_ASSETS_DIR, ASSETS_DIR)
-    seed_default_tree(DEFAULT_OVERLAY_DIR, OVERLAY_DIR)
-
-
-def seed_default_tree(src_base: pathlib.Path, dest_base: pathlib.Path) -> None:
-    if not src_base.exists():
-        return
-    for src in src_base.rglob("*"):
-        if not src.is_file():
-            continue
-        rel = src.relative_to(src_base)
-        dest = dest_base / rel
-        if dest.exists():
-            continue
-        dest.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(src, dest)
-
 
 def ensure_user_assets(uid: str) -> None:
     if not uid:
@@ -880,9 +861,9 @@ class HttpServer:
 
     async def _read_static(self, rel: str, overlay: bool) -> tuple[bytes, str, int]:
         if overlay:
-            base_candidates = [OVERLAY_DIR, DEFAULT_OVERLAY_DIR]
+            base_candidates = [DEFAULT_OVERLAY_DIR]
         else:
-            base_candidates = [ASSETS_DIR, DEFAULT_ASSETS_DIR]
+            base_candidates = [DEFAULT_ASSETS_DIR, ASSETS_DIR]
         for base in base_candidates:
             candidate = base / rel
             if candidate.is_file():
