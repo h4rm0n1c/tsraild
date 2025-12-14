@@ -879,7 +879,7 @@ class HttpServer:
         if overlay:
             base_candidates = [DEFAULT_OVERLAY_DIR]
         else:
-            base_candidates = [ASSETS_DIR, DEFAULT_ASSETS_DIR]
+            base_candidates = [DEFAULT_ASSETS_DIR, ASSETS_DIR]
         for base in base_candidates:
             candidate = base / rel
             if candidate.is_file():
