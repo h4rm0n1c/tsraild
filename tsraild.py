@@ -314,6 +314,14 @@ class TSRailState:
         clid = data.get("clid")
         cid_raw = data.get("ctid") or data.get("cid")
         cid = int(cid_raw) if cid_raw else None
+        if clid and clid == self.own_clid:
+            self.server_channel_id = cid
+            if cid is None:
+                self.server_channel_name = None
+            if self.connection:
+                asyncio.create_task(self.connection._refresh_channel_name())
+            for client in self.clients.values():
+                self._apply_policies(client)
         if clid and clid in self.clients:
             self.clients[clid].channel_id = cid
             self._apply_policies(self.clients[clid])
