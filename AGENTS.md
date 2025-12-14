@@ -71,8 +71,8 @@ The overlay expects a JSON document of the form:
           "assets": {
             "avatar_idle": "assets/users/uid1/avatar.png",
             "avatar_talk": "assets/users/uid1/avatar.gif",
-            "frame_idle": "assets/frames/monitor_idle.svg",
-            "frame_talk": "assets/frames/monitor_talk.svg"
+            "frame_idle": "assets/frames/tv_idle.png",
+            "frame_talk": "assets/frames/tv_talk.png"
           }
         }
       ]
@@ -102,8 +102,8 @@ DOM structure:
 
     <div class="tsrail-user" data-uid="uid1">
       <div class="tsrail-frame">
-        <img class="frame frame-idle" src="assets/frames/monitor_idle.svg" />
-        <img class="frame frame-talk" src="assets/frames/monitor_talk.svg" />
+        <img class="frame frame-idle" src="assets/frames/tv_idle.png" />
+        <img class="frame frame-talk" src="assets/frames/tv_talk.png" />
       </div>
       <div class="tsrail-avatar">
         <img class="avatar avatar-idle" src="assets/users/uid1/avatar.png" />
@@ -198,7 +198,7 @@ These are guidelines; actual values should be tuned for legibility and aesthetic
   - `http://127.0.0.1:17891/`
 - All asset paths in `assets` objects are relative to this origin, e.g.:
   - `assets/users/uid1/avatar.png`
-  - `assets/frames/monitor_idle.svg`
+  - `assets/frames/tv_idle.png`
 
 Overlay must not assume any hardcoded path; it uses the paths provided in JSON.
 
