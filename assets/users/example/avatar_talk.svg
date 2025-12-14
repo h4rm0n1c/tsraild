@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240">
+  <defs>
+    <radialGradient id="talk" cx="0.5" cy="0.5" r="0.7">
+      <stop offset="0%" stop-color="#34d399" stop-opacity="0.2" />
+      <stop offset="100%" stop-color="#34d399" stop-opacity="0.9" />
+    </radialGradient>
+  </defs>
+  <circle cx="120" cy="120" r="110" fill="url(#talk)" stroke="#34d399" stroke-width="8" />
+  <text x="120" y="135" text-anchor="middle" font-size="64" fill="#0a0f1c" font-family="Segoe UI, sans-serif">A</text>
+</svg>
