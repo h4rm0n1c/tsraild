@@ -71,8 +71,8 @@ The overlay expects a JSON document of the form:
           "assets": {
             "avatar_idle": "assets/users/uid1/avatar.png",
             "avatar_talk": "assets/users/uid1/avatar.gif",
-            "frame_idle": "assets/frames/monitor_idle.png",
-            "frame_talk": "assets/frames/monitor_talk.apng"
+            "frame_idle": "assets/frames/monitor_idle.svg",
+            "frame_talk": "assets/frames/monitor_talk.svg"
           }
         }
       ]
@@ -102,8 +102,8 @@ DOM structure:
 
     <div class="tsrail-user" data-uid="uid1">
       <div class="tsrail-frame">
-        <img class="frame frame-idle" src="assets/frames/monitor_idle.png" />
-        <img class="frame frame-talk" src="assets/frames/monitor_talk.apng" />
+        <img class="frame frame-idle" src="assets/frames/monitor_idle.svg" />
+        <img class="frame frame-talk" src="assets/frames/monitor_talk.svg" />
       </div>
       <div class="tsrail-avatar">
         <img class="avatar avatar-idle" src="assets/users/uid1/avatar.png" />
@@ -198,7 +198,7 @@ These are guidelines; actual values should be tuned for legibility and aesthetic
   - `http://127.0.0.1:17891/`
 - All asset paths in `assets` objects are relative to this origin, e.g.:
   - `assets/users/uid1/avatar.png`
-  - `assets/frames/monitor_idle.png`
+  - `assets/frames/monitor_idle.svg`
 
 Overlay must not assume any hardcoded path; it uses the paths provided in JSON.
 
@@ -209,8 +209,8 @@ If `state.json` provides `null` or missing paths:
 - Overlay may fall back to default placeholders, e.g.:
 
     assets/placeholder/avatar.png
-    assets/placeholder/frame_idle.png
-    assets/placeholder/frame_talk.apng
+    assets/placeholder/frame_idle.svg
+    assets/placeholder/frame_talk.svg
 
 Exact fallback resolution is primarily handled by the daemon; overlay only needs to:
 - Use the provided path directly.
