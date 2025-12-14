@@ -292,8 +292,10 @@ class TSRailState:
         nickname = decode_ts(data.get("client_nickname", ""))
         cid_raw = data.get("ctid") or data.get("cid")
         cid = int(cid_raw) if cid_raw else None
+        adopted_channel = False
         if self.server_channel_id is None:
             self.server_channel_id = cid
+            adopted_channel = cid is not None
         client = Client(
             clid=clid,
             uid=uid,
@@ -303,6 +305,8 @@ class TSRailState:
             ignored=uid in self.config.ignore_uids,
         )
         self.clients[clid] = client
+        if adopted_channel and self.connection:
+            asyncio.create_task(self.connection._refresh_channel_name())
         self._apply_policies(client)
 
     def _client_left(self, data: Dict[str, str]) -> None:
@@ -490,12 +494,17 @@ class ControlSocket:
         os.chmod(SOCKET_PATH, 0o700)
 
     async def handle_client(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
-        data = await reader.readline()
-        response = await self.dispatch(data.decode().strip())
-        writer.write(response.encode("utf-8"))
-        await writer.drain()
-        writer.close()
-        await writer.wait_closed()
+        try:
+            while not reader.at_eof():
+                data = await reader.readline()
+                if not data:
+                    break
+                response = await self.dispatch(data.decode().strip())
+                writer.write(response.encode("utf-8"))
+                await writer.drain()
+        finally:
+            writer.close()
+            await writer.wait_closed()
 
     async def dispatch(self, line: str) -> str:
         if not line:
