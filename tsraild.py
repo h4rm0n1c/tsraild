@@ -14,6 +14,7 @@ DATA_DIR = pathlib.Path(os.path.expanduser("~/.local/share/tsrail"))
 ASSETS_DIR = DATA_DIR / "assets"
 DEFAULT_OVERLAY_DIR = pathlib.Path(__file__).resolve().parent / "overlay"
 DEFAULT_ASSETS_DIR = DEFAULT_OVERLAY_DIR.parent / "assets"
+ALLOWED_AVATAR_EXTS = (".svg", ".png", ".apng", ".gif", ".webp", ".avif")
 SOCKET_PATH = pathlib.Path(os.environ.get("XDG_RUNTIME_DIR", f"/run/user/{os.getuid()}")) / "tsrail.sock"
 KEY_FILE = CONFIG_DIR / "clientquery.key"
 CONFIG_FILE = CONFIG_DIR / "config.json"
@@ -32,16 +33,22 @@ def ensure_user_assets(uid: str) -> None:
     if not uid:
         return
     user_dir = ASSETS_DIR / "users" / uid
+    user_dir_existing = user_dir.exists()
     user_dir.mkdir(parents=True, exist_ok=True)
+    if user_dir_existing:
+        return
     default_dirs = [ASSETS_DIR / "users" / "example", DEFAULT_ASSETS_DIR / "users" / "example"]
     source_dir = next((path for path in default_dirs if path.exists()), None)
     if not source_dir:
         return
-    for name in ("avatar.svg", "avatar_talk.svg"):
-        dst = user_dir / name
-        if dst.exists():
+    has_avatar = any((user_dir / f"avatar{ext}").exists() for ext in ALLOWED_AVATAR_EXTS)
+    has_avatar_talk = any((user_dir / f"avatar_talk{ext}").exists() for ext in ALLOWED_AVATAR_EXTS)
+    defaults = {"avatar": has_avatar, "avatar_talk": has_avatar_talk}
+    for stem, exists in defaults.items():
+        if exists:
             continue
-        src = source_dir / name
+        src = source_dir / f"{stem}.svg"
+        dst = user_dir / f"{stem}.svg"
         if src.is_file():
             shutil.copy2(src, dst)
 
@@ -611,10 +618,18 @@ class TSRailState:
             return self.server_channel_name
         return None
 
+    def _resolve_user_asset(self, uid: str, stem: str) -> Optional[str]:
+        user_dir = ASSETS_DIR / "users" / uid
+        for ext in ALLOWED_AVATAR_EXTS:
+            candidate = user_dir / f"{stem}{ext}"
+            if candidate.is_file():
+                return f"assets/users/{uid}/{candidate.name}"
+        return None
+
     def _build_assets(self, client: Client) -> Dict[str, Optional[str]]:
         ensure_user_assets(client.uid)
-        avatar_idle = f"assets/users/{client.uid}/avatar.svg"
-        avatar_talk = f"assets/users/{client.uid}/avatar_talk.svg"
+        avatar_idle = self._resolve_user_asset(client.uid, "avatar")
+        avatar_talk = self._resolve_user_asset(client.uid, "avatar_talk") or avatar_idle
         frame_idle = "assets/frames/tv_idle.png"
         frame_talk = "assets/frames/tv_talk.png"
         return {
@@ -902,6 +917,10 @@ def guess_type(ext: str) -> str:
         return "image/png"
     if ext == ".gif":
         return "image/gif"
+    if ext == ".webp":
+        return "image/webp"
+    if ext == ".avif":
+        return "image/avif"
     return "application/octet-stream"
 
 
