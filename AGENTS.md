@@ -345,3 +345,214 @@ Example small indicator text:
 - Hover tooltips for debug info (UID, mute status).
 - Animated entry/exit transitions when users join/leave.
 
+Summary
+
+    The repository currently only contains the overlay design guidance in AGENTS.md; it specifies the expected /state.json payload and overlay layout but there is no accompanying design/implementation to produce that endpoint or the browser overlay referenced (e.g., /overlay/, asset directories).
+
+Issues
+
+    Missing implementation and documentation for serving the /state.json contract and overlay UI described in the design notes; the repo lacks code, HTML/CSS/JS, or assets to fulfill the documented contract and entry points (e.g., http://127.0.0.1:17891/overlay/).
+
+    There is no long-running daemon process that:
+      - Connects to the TeamSpeak 3 ClientQuery interface.
+      - Tracks channel membership, talking state, and approvals/ignores.
+      - Exposes that state as the /state.json API consumed by the overlay.
+
+    There is no control plane to:
+      - Store and manage the ClientQuery API key.
+      - Maintain an approved user list keyed by UID.
+      - Maintain an ignore list (“don’t show me but still count me”).
+      - Toggle policies like auto-mute for unknown users.
+
+    There is no documented asset layout for:
+      - Per-user avatar images (idle/talking variants).
+      - Per-user or shared monitor frame images (idle/talking variants).
+      - Placeholder assets when user-specific art is missing.
+
+    There is no integration story with Devuan/runit:
+      - No guidance or scripts for running the daemon as a supervised user service.
+      - No clear logging strategy or runtime directory structure.
+
+Proposed Solution
+
+    1. Introduce a daemon component (tsraild.py) that:
+       - Connects to the local TeamSpeak 3 ClientQuery interface (127.0.0.1:25639).
+       - Implements a single-reader async adapter for ClientQuery, with:
+         - A dedicated readline loop.
+         - A response queue for command/response pairing.
+         - A notification callback for notify* events.
+       - Handles authentication via API key (auth apikey=...).
+       - Tracks:
+         - Current server connection handler (schandlerid).
+         - Current channel ID and name.
+         - Present clients (UID, clid, nickname).
+         - Talking flags with debounce logic.
+
+    2. Implement a UNIX control socket protocol:
+       - Socket path: ${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/tsrail.sock
+       - Simple line-based commands for:
+         - API key management (key-status, setkey).
+         - Approvals and ignores (approve-uid, approve-nick, ignore-uid, etc.).
+         - Policy toggles (auto-mute-unknown, require-approved, target-channel).
+         - Diagnostics (status, dump-state).
+       - All commands respond with single-line OK/ERR, plus optional data.
+
+    3. Provide an HTTP microservice:
+       - Bind to 127.0.0.1:17891.
+       - Serve:
+         - GET /state.json : current overlay state in the agreed contract format.
+         - GET /overlay/ : a small HTML/JS/CSS app that renders the TS rail.
+         - GET /assets/... : static assets (avatars, frames, placeholders).
+
+    4. Define and document the asset hierarchy:
+       - Under ~/.local/share/tsrail/:
+         - assets/placeholder/ : default avatar and frame art.
+         - assets/frames/ : shared monitor frames (idle/talk).
+         - assets/users/<uid>/ : per-user avatar and frame variants.
+         - overlay/ : index.html, overlay.js, overlay.css.
+       - Document resolution rules so overlay code can treat asset paths as opaque.
+
+    5. Write separate design docs:
+       - DESIGN.md for the daemon side (ClientQuery adapter, control socket, HTTP API, asset resolution).
+       - OVERLAY.md for the browser overlay (DOM structure, talk/idle behavior, CSS expectations, polling strategy).
+
+Implementation Outline
+
+    Daemon (tsraild.py)
+
+    - Language: Python 3 (asyncio-based).
+    - Core pieces:
+      - ClientQuery client:
+        - Connects to 127.0.0.1:25639.
+        - Handles banner/greeting lines.
+        - Uses CRLF line endings for commands.
+        - Single async reader task (_rx_loop) that:
+          - Reads lines via readline().
+          - Routes notify* lines to a notification handler.
+          - Pushes non-notify lines into an asyncio.Queue for send_cmd().
+      - Auth flow:
+        - On connect, read API key from ~/.config/tsrail/clientquery.key.
+        - Send "auth apikey=<key>" and wait for error id=0 msg=ok.
+        - On success, register notifications (clientnotifyregister schandlerid=1 event=any).
+      - State tracking:
+        - Maintain in-memory map of clients in the current channel:
+          - UID, clid, nickname, talking, approved, ignored, muted_by_us.
+        - Update on notifycliententerview, notifyclientleftview, notifyclientmoved.
+        - Update talking flag on notifytalkstatuschange (with a short debounce).
+
+      - Policies:
+        - auto-mute-unknown:
+          - For any client in the monitored channel who is not approved and not ignored, issue clientmute.
+          - Optionally unmute when they become approved.
+        - require-approved:
+          - Ensures only approved users are treated as “visible” in overlay state.
+        - ignore_uids:
+          - Users whose presence is tracked but never emitted in users[].
+
+      - HTTP server:
+        - Exposes /state.json with a structure matching OVERLAY.md.
+        - Optionally serves /overlay/ and /assets/ from ~/.local/share/tsrail.
+
+    Control Socket
+
+    - Listener:
+      - UNIX socket at ${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/tsrail.sock.
+      - Mode 0700, owner user.
+    - Commands:
+      - key-status : check if API key file exists.
+      - setkey <apikey> : write key file and trigger re-auth.
+      - status : one-line status including link_ok, auth, schandlerid, channel_id, counts, and /state.json URL.
+      - dump-state : JSON dump of current state (for debugging).
+      - approve-uid <uid> / approve-clid <clid> / approve-nick <nickname> :
+        - Add entry to approved list (persistent).
+      - unapprove-uid <uid> : remove from approved list.
+      - approved-list : print all approved entries.
+      - ignore-uid <uid> / unignore-uid <uid> / ignore-list :
+        - Manage ignore set.
+      - policy <name> <value> :
+        - Update policies (auto-mute-unknown, require-approved, target-channel, show-ignored).
+
+    HTTP & Overlay
+
+    - HTTP service:
+      - Very small, e.g. aiohttp or builtin asyncio streams:
+        - /state.json : returns JSON derived from in-memory state.
+        - /overlay/ : returns overlay HTML.
+        - /assets/ : static files rooted at ~/.local/share/tsrail/assets/.
+    - Overlay HTML/JS:
+      - Single-page minimal app:
+        - Fetches /state.json every 200–500 ms.
+        - Rebuilds or updates DOM for the vertical rail.
+        - Toggles `talking` vs `idle` class per user.
+      - CSS:
+        - Positions rail at left side of screen.
+        - Uses transparent background.
+        - For each user:
+          - Stacks avatar and monitor frame with absolute positioning.
+          - Uses CSS transitions (transform, brightness) for “hop and illuminate”.
+          - Shows nickname below the monitor.
+
+    Storage
+
+    - Config directory:
+      - ~/.config/tsrail/clientquery.key
+      - ~/.config/tsrail/config.json (approved list, ignore list, policy flags).
+    - Data / assets directory:
+      - ~/.local/share/tsrail/assets/...
+      - ~/.local/share/tsrail/log (if using svlogd).
+
+Tasks
+
+    - [ ] Add DESIGN.md describing:
+          - Daemon responsibilities and architecture.
+          - ClientQuery adapter design (single-reader, notify handling).
+          - Control socket protocol (commands and responses).
+          - HTTP endpoints and JSON contract.
+          - Asset resolution and directory layout.
+    - [ ] Add OVERLAY.md describing:
+          - Expected /state.json format.
+          - DOM structure and CSS classes.
+          - Talk/idle behavior and animation semantics.
+          - Polling strategy and error handling in the overlay.
+    - [ ] Implement tsraild.py with:
+          - Async ClientQuery adapter and reconnection.
+          - API key handling and auth logic.
+          - Channel/user/talking tracking.
+          - Policy hooks (auto-mute, require-approved, ignore_uids).
+          - Control socket server with the defined command set.
+          - HTTP server with /state.json and base /overlay/ endpoint.
+    - [ ] Add overlay assets:
+          - Placeholder avatars and monitor frames.
+          - Example user assets folder layout.
+          - Basic overlay index.html, overlay.css, overlay.js wired to /state.json.
+    - [ ] Add Devuan/runit service docs:
+          - Example run scripts for supervising tsraild as a user service.
+          - Notes on logs and troubleshooting.
+
+Acceptance Criteria
+
+    - DESIGN.md and OVERLAY.md exist and describe:
+      - The daemon behavior, control socket protocol, HTTP endpoints, and overlay contract.
+      - The DOM structure, CSS, and expected /state.json payload for the overlay.
+
+    - Running tsraild.py on Devuan with TS3 ClientQuery enabled allows:
+      - Setting API key via setkey over the UNIX socket.
+      - status returning link_ok=1 and auth=1 once TS is reachable and auth succeeds.
+      - /state.json returning valid JSON with:
+        - server info,
+        - counts,
+        - an empty users[] list when no approved users are present.
+
+    - Approving a user while they are in the TS channel (via approve-nick or approve-uid):
+      - Causes that user to appear in /state.json.users[] with the correct nickname and asset paths.
+      - Causes the overlay page at /overlay/ to render that user’s monitor + avatar + nickname.
+
+    - When the user speaks in TS:
+      - /state.json toggles the talking flag accordingly.
+      - The overlay toggles CSS classes so the user “hops and illuminates” and shows the animated frame/avatar if configured.
+
+    - When an unknown (unapproved, non-ignored) user joins the monitored channel and auto-mute-unknown is enabled:
+      - The daemon mutes that user in TS (clientmute) only once.
+      - The unknown user does not appear in users[].
+
+
