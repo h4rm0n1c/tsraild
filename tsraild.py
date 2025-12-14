@@ -275,6 +275,11 @@ class ClientQueryConnection:
                 cid = int(cid_raw) if cid_raw else None
                 if not clid:
                     continue
+                if clid == self.state.own_clid:
+                    self.state.own_uid = uid
+                    self.state.own_nickname = nickname
+                    self.state.server_channel_id = cid
+                    continue
                 client = Client(
                     clid=clid,
                     uid=uid,
@@ -298,6 +303,8 @@ class TSRailState:
         self.channel_names: Dict[int, str] = {}
         self.schandlerid: Optional[int] = 1
         self.own_clid: Optional[str] = None
+        self.own_uid: Optional[str] = None
+        self.own_nickname: Optional[str] = None
         self.last_ts: float = time.time()
         self.connection: Optional[ClientQueryConnection] = None
 
@@ -340,6 +347,15 @@ class TSRailState:
         current_channel = self.server_channel_id
         return target is not None and current_channel is not None and current_channel == target
 
+    def bot_info(self) -> Dict[str, object]:
+        return {
+            "clid": self.own_clid,
+            "uid": self.own_uid,
+            "nickname": self.own_nickname,
+            "channel_id": self.server_channel_id,
+            "channel_name": self._resolve_channel_name(self.server_channel_id),
+        }
+
     def refresh_target_from_name(self) -> None:
         name = self.config.policies.target_channel_name
         if not name:
@@ -375,6 +391,10 @@ class TSRailState:
         if self.server_channel_id is None:
             self.server_channel_id = cid
             adopted_channel = cid is not None
+        if clid == self.own_clid:
+            self.own_uid = uid
+            self.own_nickname = nickname
+            return
         client = Client(
             clid=clid,
             uid=uid,
@@ -390,6 +410,10 @@ class TSRailState:
 
     def _client_left(self, data: Dict[str, str]) -> None:
         clid = data.get("clid")
+        if clid and clid == self.own_clid:
+            self.server_channel_id = None
+            self.server_channel_name = None
+            return
         if clid and clid in self.clients:
             del self.clients[clid]
 
@@ -412,6 +436,8 @@ class TSRailState:
     def _client_updated(self, data: Dict[str, str]) -> None:
         clid = data.get("clid")
         if not clid or clid not in self.clients:
+            if clid == self.own_clid and "client_nickname" in data:
+                self.own_nickname = decode_ts(data["client_nickname"])
             return
         if "client_nickname" in data:
             self.clients[clid].nickname = decode_ts(data["client_nickname"])
@@ -482,6 +508,8 @@ class TSRailState:
         present_unknown = 0
         present_ignored = 0
         for client in self.clients.values():
+            if client.uid and self.own_uid and client.uid == self.own_uid:
+                continue
             if target_channel and client.channel_id != target_channel:
                 continue
             if client.ignored:
@@ -503,6 +531,8 @@ class TSRailState:
             return []
         users: List[Client] = []
         for client in self.clients.values():
+            if client.uid and self.own_uid and client.uid == self.own_uid:
+                continue
             if target_channel and client.channel_id != target_channel:
                 continue
             if client.ignored and not self.config.policies.show_ignored:
@@ -532,6 +562,8 @@ class TSRailState:
             return []
         unknowns: List[Client] = []
         for client in self.clients.values():
+            if client.uid and self.own_uid and client.uid == self.own_uid:
+                continue
             if target_channel and client.channel_id != target_channel:
                 continue
             if client.approved or client.ignored:
@@ -588,6 +620,7 @@ class TSRailState:
                 "target_channel_name": target_channel_name,
                 "target_channel_active": self.target_channel_active(),
             },
+            "bot": self.bot_info(),
             "counts": self.counts(),
             "users": self.build_users(),
             "unknown_users": self.build_unknown_users(),
