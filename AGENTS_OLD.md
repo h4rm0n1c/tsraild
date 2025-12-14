@@ -1,3 +1,5 @@
+#OLD DO NOT USE ANYMORE.
+
 # OVERLAY.md — TS Rail Overlay (Browser / OBS)
 
 The overlay is a browser-based UI that renders TS Rail state into a visual rail of avatars and talking indicators.
