@@ -52,8 +52,8 @@ body {
 
 .tsrail-user {
   position: relative;
-  width: 240px;
-  height: 260px;
+  width: 320px;
+  height: 320px;
   color: var(--nickname-color);
   text-align: center;
   transition: transform 0.25s ease, filter 0.25s ease;
@@ -69,10 +69,24 @@ body {
   filter: brightness(1.2) drop-shadow(0 0 12px rgba(0, 255, 255, 0.8));
 }
 
+
 .tsrail-frame,
 .tsrail-avatar {
   position: absolute;
   inset: 0;
+}
+
+.tsrail-avatar {
+  inset: 14% 14% 30%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1;
+}
+
+.tsrail-frame {
+  z-index: 2;
+  pointer-events: none;
 }
 
 .tsrail-frame img,

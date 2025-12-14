@@ -62,8 +62,8 @@ function buildUser(user) {
   nick.className = 'tsrail-nickname';
   nick.textContent = user.nickname;
 
-  wrapper.appendChild(frame);
   wrapper.appendChild(avatar);
+  wrapper.appendChild(frame);
   wrapper.appendChild(nick);
   return wrapper;
 }
