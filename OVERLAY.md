@@ -28,8 +28,8 @@ This document describes the overlay expectations for `/overlay/`, the polling st
       "assets": {
         "avatar_idle": "assets/users/uid1/avatar.png",
         "avatar_talk": "assets/users/uid1/avatar.gif",
-        "frame_idle": "assets/frames/monitor_idle.png",
-        "frame_talk": "assets/frames/monitor_talk.apng"
+        "frame_idle": "assets/frames/monitor_idle.svg",
+        "frame_talk": "assets/frames/monitor_talk.svg"
       }
     }
   ]
@@ -51,8 +51,8 @@ Root container and per-user elements:
 <div id="tsrail-rail">
   <div class="tsrail-user" data-uid="uid1">
     <div class="tsrail-frame">
-      <img class="frame frame-idle" src="assets/frames/monitor_idle.png" />
-      <img class="frame frame-talk" src="assets/frames/monitor_talk.apng" />
+      <img class="frame frame-idle" src="assets/frames/monitor_idle.svg" />
+      <img class="frame frame-talk" src="assets/frames/monitor_talk.svg" />
     </div>
     <div class="tsrail-avatar">
       <img class="avatar avatar-idle" src="assets/users/uid1/avatar.png" />
@@ -93,8 +93,8 @@ Root container and per-user elements:
 
 - Assets resolve relative to `/assets/` served by the daemon, defaulting to `~/.local/share/tsrail/assets/`.
 - Recommended layout:
-  - `assets/frames/monitor_idle.png`
-  - `assets/frames/monitor_talk.apng`
+  - `assets/frames/monitor_idle.svg`
+  - `assets/frames/monitor_talk.svg`
   - `assets/users/<uid>/avatar.png` (idle)
   - `assets/users/<uid>/avatar.gif` or `avatar.apng` (talk)
 - If a talk asset is missing or null in the JSON, reuse the idle asset.

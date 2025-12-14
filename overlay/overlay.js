@@ -29,6 +29,18 @@ function assetUrl(path) {
   return '/' + path.replace(/^\/+/, '');
 }
 
+const FALLBACK_FRAME_IDLE = assetUrl('assets/frames/monitor_idle.svg');
+const FALLBACK_FRAME_TALK = assetUrl('assets/frames/monitor_talk.svg');
+
+function applyFrameFallback(img, fallbackSrc) {
+  if (!img) return;
+  img.onerror = () => {
+    if (img.src === fallbackSrc) return;
+    img.onerror = null;
+    img.src = fallbackSrc;
+  };
+}
+
 function applyTalkingState(userEl, talking) {
   const wasTalking = userEl.classList.contains('talking');
   if (talking === wasTalking) return;
@@ -49,20 +61,17 @@ function ensureFrameAssets(wrapper, assets) {
     frameIdle.className = 'frame frame-idle';
     frame.appendChild(frameIdle);
   }
-  frameIdle.src = assetUrl(assets.frame_idle) || '';
+  frameIdle.src = assetUrl(assets.frame_idle) || FALLBACK_FRAME_IDLE;
+  applyFrameFallback(frameIdle, FALLBACK_FRAME_IDLE);
 
-  const talkUrl = assets.frame_talk ? assetUrl(assets.frame_talk) : null;
   let frameTalk = frame.querySelector('.frame-talk');
-  if (talkUrl) {
-    if (!frameTalk) {
-      frameTalk = document.createElement('img');
-      frameTalk.className = 'frame frame-talk';
-      frame.appendChild(frameTalk);
-    }
-    frameTalk.src = talkUrl;
-  } else if (frameTalk) {
-    frameTalk.remove();
+  if (!frameTalk) {
+    frameTalk = document.createElement('img');
+    frameTalk.className = 'frame frame-talk';
+    frame.appendChild(frameTalk);
   }
+  frameTalk.src = assetUrl(assets.frame_talk) || FALLBACK_FRAME_TALK;
+  applyFrameFallback(frameTalk, FALLBACK_FRAME_TALK);
 
   if (!frame.parentElement) {
     wrapper.appendChild(frame);
