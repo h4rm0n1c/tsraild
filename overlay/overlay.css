@@ -69,10 +69,24 @@ body {
   filter: brightness(1.2) drop-shadow(0 0 12px rgba(0, 255, 255, 0.8));
 }
 
+
 .tsrail-frame,
 .tsrail-avatar {
   position: absolute;
   inset: 0;
+}
+
+.tsrail-avatar {
+  inset: 26px 26px 70px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1;
+}
+
+.tsrail-frame {
+  z-index: 2;
+  pointer-events: none;
 }
 
 .tsrail-frame img,
