@@ -68,19 +68,68 @@ function buildUser(user) {
   return wrapper;
 }
 
+function applyTalkingState(node, talking) {
+  const target = talking ? 'talking' : 'idle';
+  const isTalking = node.classList.contains('talking');
+  if (isTalking === talking) return;
+
+  node.classList.remove('talking', 'idle');
+  // Force a reflow so the hop animation plays once when toggling state.
+  void node.offsetWidth;
+  node.classList.add(target);
+}
+
+function syncAssets(node, user) {
+  const frameIdle = node.querySelector('.frame-idle');
+  const frameTalk = node.querySelector('.frame-talk');
+  const avatarIdle = node.querySelector('.avatar-idle');
+  const avatarTalk = node.querySelector('.avatar-talk');
+
+  if (frameIdle) frameIdle.src = assetUrl(user.assets.frame_idle);
+  if (frameTalk && user.assets.frame_talk) frameTalk.src = assetUrl(user.assets.frame_talk);
+  if (avatarIdle) avatarIdle.src = assetUrl(user.assets.avatar_idle);
+
+  const talkSrc = user.assets.avatar_talk || user.assets.avatar_idle;
+  if (avatarTalk && talkSrc) avatarTalk.src = assetUrl(talkSrc);
+}
+
 function renderRail(state) {
-  rail.innerHTML = '';
   const users = state?.users || [];
+  const existing = new Map(
+    Array.from(rail.querySelectorAll('.tsrail-user')).map((node) => [node.dataset.uid, node])
+  );
+
+  const empty = rail.querySelector('.tsrail-empty');
   if (!users.length) {
-    const empty = document.createElement('div');
-    empty.className = 'tsrail-empty';
-    empty.textContent = 'Waiting for approved users...';
-    rail.appendChild(empty);
+    existing.forEach((node) => node.remove());
+    if (!empty) {
+      const placeholder = document.createElement('div');
+      placeholder.className = 'tsrail-empty';
+      placeholder.textContent = 'Waiting for approved users...';
+      rail.appendChild(placeholder);
+    }
     return;
   }
+
+  if (empty) empty.remove();
+
   users.forEach((user) => {
-    rail.appendChild(buildUser(user));
+    let node = existing.get(user.uid);
+    if (!node) {
+      node = buildUser(user);
+    } else {
+      applyTalkingState(node, user.talking);
+      syncAssets(node, user);
+      const nick = node.querySelector('.tsrail-nickname');
+      if (nick && nick.textContent !== user.nickname) {
+        nick.textContent = user.nickname;
+      }
+    }
+    rail.appendChild(node);
+    existing.delete(user.uid);
   });
+
+  existing.forEach((node) => node.remove());
 }
 
 async function loop() {
