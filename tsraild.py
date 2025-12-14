@@ -136,7 +136,8 @@ class ClientQueryConnection:
             self.auth_ok = False
             return
         self.auth_ok = True
-        await self.send_command("clientnotifyregister schandlerid=0 event=any")
+        await self._select_schandler()
+        await self.send_command(f"clientnotifyregister schandlerid={self.state.schandlerid or 1} event=any")
         await self.sync_state()
 
     async def sync_state(self) -> None:
@@ -199,25 +200,42 @@ class ClientQueryConnection:
 
     async def _refresh_identity(self) -> None:
         resp = await self.send_command("whoami")
+        self._update_identity(resp)
+
+    async def _select_schandler(self) -> int:
+        resp = await self.send_command("whoami")
+        schandlerid = self._update_identity(resp)
+        await self.send_command(f"use schandlerid={schandlerid}")
+        return schandlerid
+
+    def _update_identity(self, resp: List[str]) -> int:
+        schandlerid = self.state.schandlerid or 1
         for line in resp:
             if line.startswith("clid"):
                 data = parse_kv(line)
                 if data.get("schandlerid"):
-                    self.state.schandlerid = int(data["schandlerid"])
+                    schandlerid = int(data["schandlerid"])
                 if data.get("cid"):
                     self.state.server_channel_id = int(data["cid"])
                 if data.get("client_id"):
                     self.state.own_clid = data["client_id"]
+        self.state.schandlerid = schandlerid
+        return schandlerid
 
     async def _refresh_channel_name(self) -> None:
-        if not self.state.server_channel_id:
+        channel_id = self.state.config.policies.target_channel or self.state.server_channel_id
+        if not channel_id:
             return
-        resp = await self.send_command(f"channelinfo cid={self.state.server_channel_id}")
+        resp = await self.send_command(f"channelinfo cid={channel_id}")
         for line in resp:
             if line.startswith("cid"):
                 data = parse_kv(line)
                 if data.get("channel_name"):
                     self.state.server_channel_name = decode_ts(data["channel_name"])
+                    # Align the tracked channel id with the monitored target when set so
+                    # /state.json reflects the intended channel on first sync.
+                    if self.state.config.policies.target_channel:
+                        self.state.server_channel_id = channel_id
 
     async def _refresh_clients(self) -> None:
         resp = await self.send_command("clientlist -voice -uid")
