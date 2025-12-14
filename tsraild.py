@@ -132,27 +132,33 @@ class ClientQueryConnection:
             self.auth_ok = False
             return
         resp = await self.send_command(f"auth apikey={key}")
-        if self._is_ok(resp):
-            self.auth_ok = True
-            await self.send_command("clientnotifyregister schandlerid=1 event=any")
-            await self.refresh_whoami()
-        else:
+        if not self._is_ok(resp):
             self.auth_ok = False
+            return
+        self.auth_ok = True
+        await self.send_command("clientnotifyregister schandlerid=0 event=any")
+        await self.sync_state()
 
-    async def refresh_whoami(self) -> None:
-        resp = await self.send_command("whoami")
-        for line in resp:
-            if line.startswith("clid"):
-                data = parse_kv(line)
-                if "cid" in data:
-                    self.state.server_channel_id = int(data["cid"])
-                if "client_id" in data:
-                    self.state.own_clid = data.get("client_id")
+    async def sync_state(self) -> None:
+        await self._refresh_identity()
+        await self._refresh_channel_name()
+        await self._refresh_clients()
 
     async def stop(self) -> None:
         self.running = False
         if self.reader_task:
             self.reader_task.cancel()
+
+    async def reauthenticate(self) -> None:
+        if not self.writer:
+            return
+        key = self.state.load_api_key()
+        if not key:
+            return
+        resp = await self.send_command(f"auth apikey={key}")
+        if self._is_ok(resp):
+            self.auth_ok = True
+            await self.sync_state()
 
     async def send_command(self, cmd: str) -> List[str]:
         if not self.writer or not self.reader:
@@ -191,6 +197,57 @@ class ClientQueryConnection:
     def _is_ok(lines: List[str]) -> bool:
         return any(line.startswith("error id=0") for line in lines)
 
+    async def _refresh_identity(self) -> None:
+        resp = await self.send_command("whoami")
+        for line in resp:
+            if line.startswith("clid"):
+                data = parse_kv(line)
+                if data.get("schandlerid"):
+                    self.state.schandlerid = int(data["schandlerid"])
+                if data.get("cid"):
+                    self.state.server_channel_id = int(data["cid"])
+                if data.get("client_id"):
+                    self.state.own_clid = data["client_id"]
+
+    async def _refresh_channel_name(self) -> None:
+        if not self.state.server_channel_id:
+            return
+        resp = await self.send_command(f"channelinfo cid={self.state.server_channel_id}")
+        for line in resp:
+            if line.startswith("cid"):
+                data = parse_kv(line)
+                if data.get("channel_name"):
+                    self.state.server_channel_name = decode_ts(data["channel_name"])
+
+    async def _refresh_clients(self) -> None:
+        resp = await self.send_command("clientlist -voice -uid")
+        if not resp:
+            return
+        new_clients: Dict[str, Client] = {}
+        for line in resp:
+            if not line or line.startswith("error "):
+                continue
+            for entry in parse_multi_kv(line):
+                clid = entry.get("clid")
+                uid = entry.get("client_unique_identifier", "")
+                nickname = decode_ts(entry.get("client_nickname", ""))
+                cid_raw = entry.get("cid")
+                cid = int(cid_raw) if cid_raw else None
+                if not clid:
+                    continue
+                client = Client(
+                    clid=clid,
+                    uid=uid,
+                    nickname=nickname,
+                    channel_id=cid,
+                    approved=uid in self.state.config.approved_uids,
+                    ignored=uid in self.state.config.ignore_uids,
+                )
+                new_clients[clid] = client
+        self.state.clients = new_clients
+        for client in self.state.clients.values():
+            self.state._apply_policies(client)
+
 
 class TSRailState:
     def __init__(self, config: PersistentConfig):
@@ -225,6 +282,8 @@ class TSRailState:
             self._client_moved(data)
         elif event.startswith("notifytalkstatuschange"):
             self._talk_status(data)
+        elif event.startswith("notifyclientupdated"):
+            self._client_updated(data)
         self.last_ts = time.time()
 
     def _client_enter(self, data: Dict[str, str]) -> None:
@@ -258,6 +317,13 @@ class TSRailState:
         if clid and clid in self.clients:
             self.clients[clid].channel_id = cid
             self._apply_policies(self.clients[clid])
+
+    def _client_updated(self, data: Dict[str, str]) -> None:
+        clid = data.get("clid")
+        if not clid or clid not in self.clients:
+            return
+        if "client_nickname" in data:
+            self.clients[clid].nickname = decode_ts(data["client_nickname"])
 
     def _talk_status(self, data: Dict[str, str]) -> None:
         clid = data.get("clid")
@@ -398,6 +464,10 @@ def decode_ts(value: str) -> str:
     return value.replace("\\s", " ").replace("\\p", "|")
 
 
+def parse_multi_kv(line: str) -> List[Dict[str, str]]:
+    return [parse_kv(block) for block in line.split("|") if block]
+
+
 class ControlSocket:
     def __init__(self, state: TSRailState, conn: ClientQueryConnection) -> None:
         self.state = state
@@ -440,6 +510,7 @@ class ControlSocket:
         if cmd == "setkey" and args:
             ensure_dirs()
             KEY_FILE.write_text(args[0], encoding="utf-8")
+            await self.conn.reauthenticate()
             return "ok\n"
         if cmd == "dump-state":
             return json.dumps(self.state.state_json(), indent=2) + "\n"
