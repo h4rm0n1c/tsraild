@@ -582,8 +582,6 @@ class TSRailState:
             "ts": time.time(),
             "server": {
                 "schandlerid": self.schandlerid,
-                "channel_id": monitor_channel,
-                "channel_name": self._resolve_channel_name(monitor_channel),
                 "current_channel_id": self.server_channel_id,
                 "current_channel_name": self._resolve_channel_name(self.server_channel_id),
                 "target_channel_id": target_channel,
