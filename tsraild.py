@@ -634,8 +634,8 @@ class TSRailState:
         ensure_user_assets(client.uid)
         avatar_idle = f"assets/users/{client.uid}/avatar.svg"
         avatar_talk = f"assets/users/{client.uid}/avatar_talk.svg"
-        frame_idle = "assets/frames/monitor_idle.svg"
-        frame_talk = "assets/frames/monitor_talk.svg"
+        frame_idle = "assets/frames/tv_idle.png"
+        frame_talk = "assets/frames/tv_talk.png"
         return {
             "avatar_idle": avatar_idle,
             "avatar_talk": avatar_talk,

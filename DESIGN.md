@@ -62,7 +62,7 @@ This document captures the intended behavior and integration points for the TS R
 - **Assets:**
   - Base path: `~/.local/share/tsrail/assets/`.
   - Suggested structure:
-    - `assets/frames/` — shared monitor frames (idle/talk variants), e.g., `monitor_idle.svg`, `monitor_talk.svg`.
+    - `assets/frames/` — shared monitor frames (idle/talk variants), e.g., `tv_idle.png`, `tv_talk.png`.
     - `assets/users/<uid>/` — per-user avatars, e.g., `avatar.png` (idle), `avatar.gif` or `avatar.apng` (talk).
   - If a talk asset is missing for a user, reuse the idle asset for both states.
 - **Overlay defaults:** Provide placeholder assets for users lacking custom files, and ensure transparent backgrounds for compositing in OBS.

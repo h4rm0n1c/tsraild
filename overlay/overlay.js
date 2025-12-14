@@ -29,8 +29,8 @@ function assetUrl(path) {
   return '/' + path.replace(/^\/+/, '');
 }
 
-const FALLBACK_FRAME_IDLE = assetUrl('assets/frames/monitor_idle.svg');
-const FALLBACK_FRAME_TALK = assetUrl('assets/frames/monitor_talk.svg');
+const FALLBACK_FRAME_IDLE = assetUrl('assets/frames/tv_idle.png');
+const FALLBACK_FRAME_TALK = assetUrl('assets/frames/tv_talk.png');
 
 function applyFrameFallback(img, fallbackSrc) {
   if (!img) return;
