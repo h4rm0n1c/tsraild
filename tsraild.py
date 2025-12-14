@@ -34,6 +34,7 @@ class Policies:
     auto_mute_unknown: bool = True
     require_approved: bool = True
     target_channel: Optional[int] = None
+    target_channel_name: Optional[str] = None
     show_ignored: bool = False
 
     @classmethod
@@ -42,6 +43,7 @@ class Policies:
             auto_mute_unknown=bool(data.get("auto-mute-unknown", data.get("auto_mute_unknown", True))),
             require_approved=bool(data.get("require-approved", data.get("require_approved", True))),
             target_channel=data.get("target-channel") or data.get("target_channel"),
+            target_channel_name=data.get("target-channel-name") or data.get("target_channel_name"),
             show_ignored=bool(data.get("show-ignored", data.get("show_ignored", False))),
         )
 
@@ -50,6 +52,7 @@ class Policies:
             "auto-mute-unknown": self.auto_mute_unknown,
             "require-approved": self.require_approved,
             "target-channel": self.target_channel,
+            "target-channel-name": self.target_channel_name,
             "show-ignored": self.show_ignored,
         }
 
@@ -142,6 +145,7 @@ class ClientQueryConnection:
 
     async def sync_state(self) -> None:
         await self._refresh_identity()
+        await self._refresh_channels()
         await self._refresh_channel_name()
         await self._refresh_clients()
 
@@ -223,19 +227,37 @@ class ClientQueryConnection:
         return schandlerid
 
     async def _refresh_channel_name(self) -> None:
-        channel_id = self.state.config.policies.target_channel or self.state.server_channel_id
-        if not channel_id:
+        channel_ids: List[int] = []
+        if self.state.config.policies.target_channel:
+            channel_ids.append(self.state.config.policies.target_channel)
+        if self.state.server_channel_id and self.state.server_channel_id not in channel_ids:
+            channel_ids.append(self.state.server_channel_id)
+        for channel_id in channel_ids:
+            resp = await self.send_command(f"channelinfo cid={channel_id}")
+            for line in resp:
+                if line.startswith("cid"):
+                    data = parse_kv(line)
+                    if data.get("channel_name"):
+                        name = decode_ts(data["channel_name"])
+                        if channel_id == self.state.server_channel_id:
+                            self.state.server_channel_name = name
+                        self.state.channel_names[channel_id] = name
+
+    async def _refresh_channels(self) -> None:
+        resp = await self.send_command("channellist")
+        if not resp:
             return
-        resp = await self.send_command(f"channelinfo cid={channel_id}")
         for line in resp:
-            if line.startswith("cid"):
-                data = parse_kv(line)
-                if data.get("channel_name"):
-                    self.state.server_channel_name = decode_ts(data["channel_name"])
-                    # Align the tracked channel id with the monitored target when set so
-                    # /state.json reflects the intended channel on first sync.
-                    if self.state.config.policies.target_channel:
-                        self.state.server_channel_id = channel_id
+            if not line or line.startswith("error "):
+                continue
+            for entry in parse_multi_kv(line):
+                cid_raw = entry.get("cid")
+                name_raw = entry.get("channel_name")
+                if not cid_raw or name_raw is None:
+                    continue
+                cid = int(cid_raw)
+                self.state.channel_names[cid] = decode_ts(name_raw)
+        self.state.refresh_target_from_name()
 
     async def _refresh_clients(self) -> None:
         resp = await self.send_command("clientlist -voice -uid")
@@ -252,6 +274,11 @@ class ClientQueryConnection:
                 cid_raw = entry.get("cid")
                 cid = int(cid_raw) if cid_raw else None
                 if not clid:
+                    continue
+                if clid == self.state.own_clid:
+                    self.state.own_uid = uid
+                    self.state.own_nickname = nickname
+                    self.state.server_channel_id = cid
                     continue
                 client = Client(
                     clid=clid,
@@ -271,10 +298,13 @@ class TSRailState:
     def __init__(self, config: PersistentConfig):
         self.config = config
         self.clients: Dict[str, Client] = {}
-        self.server_channel_id: Optional[int] = config.policies.target_channel
+        self.server_channel_id: Optional[int] = None
         self.server_channel_name: Optional[str] = None
+        self.channel_names: Dict[int, str] = {}
         self.schandlerid: Optional[int] = 1
         self.own_clid: Optional[str] = None
+        self.own_uid: Optional[str] = None
+        self.own_nickname: Optional[str] = None
         self.last_ts: float = time.time()
         self.connection: Optional[ClientQueryConnection] = None
 
@@ -304,6 +334,53 @@ class TSRailState:
             self._client_updated(data)
         self.last_ts = time.time()
 
+    def monitor_channel_id(self) -> Optional[int]:
+        target = self.config.policies.target_channel
+        if target:
+            if self.server_channel_id == target:
+                return target
+            return None
+        return self.server_channel_id
+
+    def target_channel_active(self) -> bool:
+        target = self.config.policies.target_channel
+        current_channel = self.server_channel_id
+        return target is not None and current_channel is not None and current_channel == target
+
+    def bot_info(self) -> Dict[str, object]:
+        return {
+            "clid": self.own_clid,
+            "uid": self.own_uid,
+            "nickname": self.own_nickname,
+            "channel_id": self.server_channel_id,
+            "channel_name": self._resolve_channel_name(self.server_channel_id),
+        }
+
+    def refresh_target_from_name(self) -> None:
+        name = self.config.policies.target_channel_name
+        if not name:
+            return
+        cid = self._resolve_channel_id_by_name(name)
+        if cid != self.config.policies.target_channel:
+            self.config.policies.target_channel = cid
+            self.config.save()
+
+    def apply_target_channel(self, channel_id: Optional[int], channel_name: Optional[str]) -> None:
+        self.config.policies.target_channel = channel_id
+        self.config.policies.target_channel_name = channel_name
+        if channel_id is None:
+            self.server_channel_name = None
+        for client in self.clients.values():
+            self._apply_policies(client)
+        self.config.save()
+
+    def _resolve_channel_id_by_name(self, name: str) -> Optional[int]:
+        needle = name.casefold()
+        for cid, cname in self.channel_names.items():
+            if cname.casefold() == needle:
+                return cid
+        return None
+
     def _client_enter(self, data: Dict[str, str]) -> None:
         uid = data.get("client_unique_identifier", "")
         clid = data.get("clid", "")
@@ -314,6 +391,10 @@ class TSRailState:
         if self.server_channel_id is None:
             self.server_channel_id = cid
             adopted_channel = cid is not None
+        if clid == self.own_clid:
+            self.own_uid = uid
+            self.own_nickname = nickname
+            return
         client = Client(
             clid=clid,
             uid=uid,
@@ -329,6 +410,10 @@ class TSRailState:
 
     def _client_left(self, data: Dict[str, str]) -> None:
         clid = data.get("clid")
+        if clid and clid == self.own_clid:
+            self.server_channel_id = None
+            self.server_channel_name = None
+            return
         if clid and clid in self.clients:
             del self.clients[clid]
 
@@ -351,6 +436,8 @@ class TSRailState:
     def _client_updated(self, data: Dict[str, str]) -> None:
         clid = data.get("clid")
         if not clid or clid not in self.clients:
+            if clid == self.own_clid and "client_nickname" in data:
+                self.own_nickname = decode_ts(data["client_nickname"])
             return
         if "client_nickname" in data:
             self.clients[clid].nickname = decode_ts(data["client_nickname"])
@@ -362,8 +449,10 @@ class TSRailState:
             self.clients[clid].talking = status == "1"
 
     def _apply_policies(self, client: Client) -> None:
-        target_channel = self.config.policies.target_channel or self.server_channel_id
-        in_channel = target_channel is None or client.channel_id == target_channel
+        monitor_channel = self.monitor_channel_id()
+        in_channel = monitor_channel is None or client.channel_id == monitor_channel
+        if self.config.policies.target_channel and monitor_channel is None:
+            in_channel = False
         client.approved = client.uid in self.config.approved_uids
         client.ignored = client.uid in self.config.ignore_uids
         if in_channel and self.config.policies.auto_mute_unknown:
@@ -406,12 +495,21 @@ class TSRailState:
         self.config.save()
 
     def counts(self) -> Dict[str, int]:
-        target_channel = self.config.policies.target_channel or self.server_channel_id
+        target_channel = self.monitor_channel_id()
+        if self.config.policies.target_channel and target_channel is None:
+            return {
+                "approved_total": len(self.config.approved_uids),
+                "present_approved": 0,
+                "present_unknown": 0,
+                "present_ignored": 0,
+            }
         approved_total = len(self.config.approved_uids)
         present_approved = 0
         present_unknown = 0
         present_ignored = 0
         for client in self.clients.values():
+            if client.uid and self.own_uid and client.uid == self.own_uid:
+                continue
             if target_channel and client.channel_id != target_channel:
                 continue
             if client.ignored:
@@ -428,9 +526,13 @@ class TSRailState:
         }
 
     def build_users(self) -> List[Dict[str, object]]:
-        target_channel = self.config.policies.target_channel or self.server_channel_id
+        target_channel = self.monitor_channel_id()
+        if self.config.policies.target_channel and target_channel is None:
+            return []
         users: List[Client] = []
         for client in self.clients.values():
+            if client.uid and self.own_uid and client.uid == self.own_uid:
+                continue
             if target_channel and client.channel_id != target_channel:
                 continue
             if client.ignored and not self.config.policies.show_ignored:
@@ -454,6 +556,44 @@ class TSRailState:
             )
         return result
 
+    def build_unknown_users(self) -> List[Dict[str, object]]:
+        target_channel = self.monitor_channel_id()
+        if self.config.policies.target_channel and target_channel is None:
+            return []
+        unknowns: List[Client] = []
+        for client in self.clients.values():
+            if client.uid and self.own_uid and client.uid == self.own_uid:
+                continue
+            if target_channel and client.channel_id != target_channel:
+                continue
+            if client.approved or client.ignored:
+                continue
+            unknowns.append(client)
+        unknowns.sort(key=lambda c: c.nickname.lower())
+        return [
+            {
+                "uid": client.uid,
+                "nickname": client.nickname,
+                "channel_id": client.channel_id,
+            }
+            for client in unknowns
+        ]
+
+    def build_channels(self) -> List[Dict[str, object]]:
+        return [
+            {"id": cid, "name": name}
+            for cid, name in sorted(self.channel_names.items(), key=lambda kv: kv[1].lower())
+        ]
+
+    def _resolve_channel_name(self, cid: Optional[int]) -> Optional[str]:
+        if cid is None:
+            return None
+        if cid in self.channel_names:
+            return self.channel_names[cid]
+        if cid == self.server_channel_id:
+            return self.server_channel_name
+        return None
+
     def _build_assets(self, client: Client) -> Dict[str, Optional[str]]:
         avatar_idle = f"assets/users/{client.uid}/avatar.svg"
         avatar_talk = f"assets/users/{client.uid}/avatar_talk.svg"
@@ -467,15 +607,24 @@ class TSRailState:
         }
 
     def state_json(self) -> Dict[str, object]:
+        monitor_channel = self.monitor_channel_id()
+        target_channel = self.config.policies.target_channel
+        target_channel_name = self._resolve_channel_name(target_channel) or self.config.policies.target_channel_name
         return {
             "ts": time.time(),
             "server": {
                 "schandlerid": self.schandlerid,
-                "channel_id": self.config.policies.target_channel or self.server_channel_id,
-                "channel_name": self.server_channel_name,
+                "current_channel_id": self.server_channel_id,
+                "current_channel_name": self._resolve_channel_name(self.server_channel_id),
+                "target_channel_id": target_channel,
+                "target_channel_name": target_channel_name,
+                "target_channel_active": self.target_channel_active(),
             },
+            "bot": self.bot_info(),
             "counts": self.counts(),
             "users": self.build_users(),
+            "unknown_users": self.build_unknown_users(),
+            "channels": self.build_channels(),
         }
 
 
@@ -555,9 +704,11 @@ class ControlSocket:
             link_ok = int(self.conn.link_ok)
             auth = int(self.conn.auth_ok)
             channel_id = self.state.config.policies.target_channel or self.state.server_channel_id
+            channel_name = self.state._resolve_channel_name(channel_id) or ""
             return (
                 f"ok link_ok={link_ok} auth={auth} schandlerid={self.state.schandlerid} "
-                f"channel_id={channel_id} counts={counts} url=http://{HTTP_HOST}:{HTTP_PORT}/state.json\n"
+                f"channel_id={channel_id} channel_name={channel_name} counts={counts} "
+                f"url=http://{HTTP_HOST}:{HTTP_PORT}/state.json\n"
             )
         if cmd == "key-status":
             exists = int(KEY_FILE.exists())
@@ -600,7 +751,7 @@ class ControlSocket:
             return "\n".join(sorted(self.state.config.ignore_uids)) + "\n"
         if cmd == "policy" and len(args) >= 2:
             name = args[0]
-            value_raw = args[1]
+            value_raw = " ".join(args[1:])
             value: object
             if value_raw.lower() in {"1", "true", "yes", "on"}:
                 value = True
@@ -616,13 +767,38 @@ class ControlSocket:
             elif name == "require-approved":
                 self.state.config.policies.require_approved = bool(value)
             elif name == "target-channel":
-                self.state.config.policies.target_channel = int(value) if value not in {None, ""} else None
+                if not value_raw:
+                    self.state.apply_target_channel(None, None)
+                    if self.conn:
+                        await self.conn._refresh_channel_name()
+                    return "ok\n"
+                if self.conn:
+                    await self.conn._refresh_channels()
+                channel_id: Optional[int]
+                channel_name: Optional[str] = None
+                try:
+                    channel_id = int(value_raw)
+                    channel_name = self.state._resolve_channel_name(channel_id)
+                except ValueError:
+                    channel_name = value_raw
+                    channel_id = self.state._resolve_channel_id_by_name(value_raw)
+                if channel_id is None:
+                    return "error unknown channel\n"
+                if channel_name is None:
+                    channel_name = value_raw
+                self.state.apply_target_channel(channel_id, channel_name)
+                if self.conn:
+                    await self.conn._refresh_channel_name()
+                    await self.conn._refresh_clients()
             elif name == "show-ignored":
                 self.state.config.policies.show_ignored = bool(value)
             else:
                 return "error unknown policy\n"
             self.state.config.save()
             return "ok\n"
+        if cmd == "channels":
+            lines = [f"{cid}\t{self.state.channel_names[cid]}" for cid in sorted(self.state.channel_names)]
+            return "\n".join(lines) + "\n"
         return "error unknown\n"
 
 
