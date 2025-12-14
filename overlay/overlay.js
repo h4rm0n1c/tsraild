@@ -26,6 +26,18 @@ function assetUrl(path) {
   return '/' + path.replace(/^\/+/, '');
 }
 
+const FALLBACK_FRAME_IDLE = assetUrl('assets/frames/monitor_idle.svg');
+const FALLBACK_FRAME_TALK = assetUrl('assets/frames/monitor_talk.svg');
+
+function applyFrameFallback(img, fallbackSrc) {
+  if (!img) return;
+  img.onerror = () => {
+    if (img.src === fallbackSrc) return;
+    img.onerror = null;
+    img.src = fallbackSrc;
+  };
+}
+
 function buildUser(user) {
   const wrapper = document.createElement('div');
   wrapper.className = 'tsrail-user ' + (user.talking ? 'talking' : 'idle');
@@ -35,14 +47,14 @@ function buildUser(user) {
   frame.className = 'tsrail-frame';
   const frameIdle = document.createElement('img');
   frameIdle.className = 'frame frame-idle';
-  frameIdle.src = assetUrl(user.assets.frame_idle);
+  frameIdle.src = assetUrl(user.assets.frame_idle) || FALLBACK_FRAME_IDLE;
+  applyFrameFallback(frameIdle, FALLBACK_FRAME_IDLE);
   frame.appendChild(frameIdle);
-  if (user.assets.frame_talk) {
-    const frameTalk = document.createElement('img');
-    frameTalk.className = 'frame frame-talk';
-    frameTalk.src = assetUrl(user.assets.frame_talk);
-    frame.appendChild(frameTalk);
-  }
+  const frameTalk = document.createElement('img');
+  frameTalk.className = 'frame frame-talk';
+  frameTalk.src = assetUrl(user.assets.frame_talk) || FALLBACK_FRAME_TALK;
+  applyFrameFallback(frameTalk, FALLBACK_FRAME_TALK);
+  frame.appendChild(frameTalk);
 
   const avatar = document.createElement('div');
   avatar.className = 'tsrail-avatar';
