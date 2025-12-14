@@ -3,6 +3,9 @@ const errorBanner = document.getElementById('tsrail-error');
 const POLL_MS = 400;
 let lastState = null;
 
+const userElements = new Map();
+let emptyMessage = null;
+
 async function fetchState() {
   try {
     const res = await fetch('/state.json', { cache: 'no-cache' });
@@ -26,60 +29,150 @@ function assetUrl(path) {
   return '/' + path.replace(/^\/+/, '');
 }
 
-function buildUser(user) {
-  const wrapper = document.createElement('div');
-  wrapper.className = 'tsrail-user ' + (user.talking ? 'talking' : 'idle');
-  wrapper.dataset.uid = user.uid;
+function applyTalkingState(userEl, talking) {
+  const wasTalking = userEl.classList.contains('talking');
+  if (talking === wasTalking) return;
 
-  const frame = document.createElement('div');
+  // Force a reflow only on change to let hop animations play once per transition.
+  void userEl.offsetHeight;
+  userEl.classList.toggle('talking', talking);
+  userEl.classList.toggle('idle', !talking);
+}
+
+function ensureFrameAssets(wrapper, assets) {
+  const frame = wrapper.querySelector('.tsrail-frame') || document.createElement('div');
   frame.className = 'tsrail-frame';
-  const frameIdle = document.createElement('img');
-  frameIdle.className = 'frame frame-idle';
-  frameIdle.src = assetUrl(user.assets.frame_idle);
-  frame.appendChild(frameIdle);
-  if (user.assets.frame_talk) {
-    const frameTalk = document.createElement('img');
-    frameTalk.className = 'frame frame-talk';
-    frameTalk.src = assetUrl(user.assets.frame_talk);
-    frame.appendChild(frameTalk);
+
+  let frameIdle = frame.querySelector('.frame-idle');
+  if (!frameIdle) {
+    frameIdle = document.createElement('img');
+    frameIdle.className = 'frame frame-idle';
+    frame.appendChild(frameIdle);
+  }
+  frameIdle.src = assetUrl(assets.frame_idle) || '';
+
+  const talkUrl = assets.frame_talk ? assetUrl(assets.frame_talk) : null;
+  let frameTalk = frame.querySelector('.frame-talk');
+  if (talkUrl) {
+    if (!frameTalk) {
+      frameTalk = document.createElement('img');
+      frameTalk.className = 'frame frame-talk';
+      frame.appendChild(frameTalk);
+    }
+    frameTalk.src = talkUrl;
+  } else if (frameTalk) {
+    frameTalk.remove();
   }
 
-  const avatar = document.createElement('div');
+  if (!frame.parentElement) {
+    wrapper.appendChild(frame);
+  }
+}
+
+function ensureAvatarAssets(wrapper, assets) {
+  const avatar = wrapper.querySelector('.tsrail-avatar') || document.createElement('div');
   avatar.className = 'tsrail-avatar';
-  const avatarIdle = document.createElement('img');
-  avatarIdle.className = 'avatar avatar-idle';
-  avatarIdle.src = assetUrl(user.assets.avatar_idle);
-  avatar.appendChild(avatarIdle);
-  const talkSrc = user.assets.avatar_talk || user.assets.avatar_idle;
-  if (talkSrc) {
-    const avatarTalk = document.createElement('img');
-    avatarTalk.className = 'avatar avatar-talk';
-    avatarTalk.src = assetUrl(talkSrc);
-    avatar.appendChild(avatarTalk);
+
+  let avatarIdle = avatar.querySelector('.avatar-idle');
+  if (!avatarIdle) {
+    avatarIdle = document.createElement('img');
+    avatarIdle.className = 'avatar avatar-idle';
+    avatar.appendChild(avatarIdle);
+  }
+  avatarIdle.src = assetUrl(assets.avatar_idle) || '';
+
+  const talkSrc = assets.avatar_talk || assets.avatar_idle;
+  const talkUrl = talkSrc ? assetUrl(talkSrc) : null;
+  let avatarTalk = avatar.querySelector('.avatar-talk');
+  if (talkUrl) {
+    if (!avatarTalk) {
+      avatarTalk = document.createElement('img');
+      avatarTalk.className = 'avatar avatar-talk';
+      avatar.appendChild(avatarTalk);
+    }
+    avatarTalk.src = talkUrl;
+  } else if (avatarTalk) {
+    avatarTalk.remove();
   }
 
-  const nick = document.createElement('div');
-  nick.className = 'tsrail-nickname';
-  nick.textContent = user.nickname;
+  if (!avatar.parentElement) {
+    wrapper.appendChild(avatar);
+  }
+}
 
-  wrapper.appendChild(frame);
-  wrapper.appendChild(avatar);
-  wrapper.appendChild(nick);
+function ensureNickname(wrapper, nickname) {
+  let nick = wrapper.querySelector('.tsrail-nickname');
+  if (!nick) {
+    nick = document.createElement('div');
+    nick.className = 'tsrail-nickname';
+    wrapper.appendChild(nick);
+  }
+  if (nick.textContent !== nickname) {
+    nick.textContent = nickname;
+  }
+}
+
+function buildOrUpdateUser(user) {
+  let wrapper = userElements.get(user.uid);
+  if (!wrapper) {
+    wrapper = document.createElement('div');
+    wrapper.dataset.uid = user.uid;
+    userElements.set(user.uid, wrapper);
+  }
+
+  wrapper.classList.add('tsrail-user');
+  applyTalkingState(wrapper, !!user.talking);
+  ensureFrameAssets(wrapper, user.assets || {});
+  ensureAvatarAssets(wrapper, user.assets || {});
+  ensureNickname(wrapper, user.nickname);
   return wrapper;
 }
 
 function renderRail(state) {
-  rail.innerHTML = '';
   const users = state?.users || [];
+
+  // Remove any placeholder message when real users arrive.
+  if (users.length && emptyMessage) {
+    emptyMessage.remove();
+    emptyMessage = null;
+  }
+
   if (!users.length) {
-    const empty = document.createElement('div');
-    empty.className = 'tsrail-empty';
-    empty.textContent = 'Waiting for approved users...';
-    rail.appendChild(empty);
+    if (!emptyMessage) {
+      emptyMessage = document.createElement('div');
+      emptyMessage.className = 'tsrail-empty';
+      emptyMessage.textContent = 'Waiting for approved users...';
+    }
+    // Clear stale user nodes while keeping the placeholder intact.
+    rail.querySelectorAll('.tsrail-user').forEach((el) => el.remove());
+    userElements.clear();
+    if (!emptyMessage.parentElement) rail.appendChild(emptyMessage);
     return;
   }
-  users.forEach((user) => {
-    rail.appendChild(buildUser(user));
+
+  const seen = new Set();
+  const orderedNodes = users.map((user) => {
+    const node = buildOrUpdateUser(user);
+    seen.add(user.uid);
+    return node;
+  });
+
+  // Remove nodes that are no longer present.
+  userElements.forEach((node, uid) => {
+    if (!seen.has(uid)) {
+      node.remove();
+      userElements.delete(uid);
+    }
+  });
+
+  // Reorder without rebuilding the rail to keep animations stable.
+  let cursor = rail.firstElementChild;
+  orderedNodes.forEach((node) => {
+    if (node === cursor) {
+      cursor = cursor.nextElementSibling;
+      return;
+    }
+    rail.insertBefore(node, cursor);
   });
 }
 
