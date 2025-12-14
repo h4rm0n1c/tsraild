@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 320">
-  <rect x="8" y="8" width="304" height="260" rx="18" ry="18" fill="#0c0f17" stroke="#16d1ff" stroke-width="6" />
+  <rect x="8" y="8" width="304" height="260" rx="18" ry="18" fill="none" stroke="#16d1ff" stroke-width="6" />
   <rect x="32" y="32" width="256" height="212" rx="12" ry="12" fill="#121826" fill-opacity="0.3" stroke="#0d80c7" stroke-width="4" />
   <text x="160" y="300" text-anchor="middle" font-size="22" fill="#16d1ff" font-family="Segoe UI, sans-serif">TS Rail Idle</text>
 </svg>
