@@ -1,5 +1,7 @@
 const rail = document.getElementById('tsrail-rail');
+const errorBanner = document.getElementById('tsrail-error');
 const POLL_MS = 400;
+let lastState = null;
 
 async function fetchState() {
   try {
@@ -12,6 +14,18 @@ async function fetchState() {
   }
 }
 
+function setErrorVisible(show) {
+  if (!errorBanner) return;
+  errorBanner.classList.toggle('hidden', !show);
+}
+
+function assetUrl(path) {
+  if (!path) return null;
+  if (path.startsWith('http://') || path.startsWith('https://')) return path;
+  if (path.startsWith('/')) return path;
+  return '/' + path.replace(/^\/+/, '');
+}
+
 function buildUser(user) {
   const wrapper = document.createElement('div');
   wrapper.className = 'tsrail-user ' + (user.talking ? 'talking' : 'idle');
@@ -21,12 +35,12 @@ function buildUser(user) {
   frame.className = 'tsrail-frame';
   const frameIdle = document.createElement('img');
   frameIdle.className = 'frame frame-idle';
-  frameIdle.src = user.assets.frame_idle;
+  frameIdle.src = assetUrl(user.assets.frame_idle);
   frame.appendChild(frameIdle);
   if (user.assets.frame_talk) {
     const frameTalk = document.createElement('img');
     frameTalk.className = 'frame frame-talk';
-    frameTalk.src = user.assets.frame_talk;
+    frameTalk.src = assetUrl(user.assets.frame_talk);
     frame.appendChild(frameTalk);
   }
 
@@ -34,13 +48,13 @@ function buildUser(user) {
   avatar.className = 'tsrail-avatar';
   const avatarIdle = document.createElement('img');
   avatarIdle.className = 'avatar avatar-idle';
-  avatarIdle.src = user.assets.avatar_idle;
+  avatarIdle.src = assetUrl(user.assets.avatar_idle);
   avatar.appendChild(avatarIdle);
   const talkSrc = user.assets.avatar_talk || user.assets.avatar_idle;
   if (talkSrc) {
     const avatarTalk = document.createElement('img');
     avatarTalk.className = 'avatar avatar-talk';
-    avatarTalk.src = talkSrc;
+    avatarTalk.src = assetUrl(talkSrc);
     avatar.appendChild(avatarTalk);
   }
 
@@ -54,7 +68,7 @@ function buildUser(user) {
   return wrapper;
 }
 
-function render(state) {
+function renderRail(state) {
   rail.innerHTML = '';
   const users = state?.users || [];
   if (!users.length) {
@@ -71,7 +85,14 @@ function render(state) {
 
 async function loop() {
   const state = await fetchState();
-  if (state) render(state);
+  if (state) {
+    lastState = state;
+    renderRail(state);
+    setErrorVisible(false);
+  } else {
+    // Keep the last known view (if any) and surface a lightweight error.
+    setErrorVisible(true);
+  }
   setTimeout(loop, POLL_MS);
 }
 

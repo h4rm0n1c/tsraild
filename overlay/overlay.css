@@ -3,6 +3,11 @@
   --rail-bg: rgba(0, 0, 0, 0);
   --nickname-color: #b6fffe;
   --nickname-shadow: 0 0 8px rgba(0, 255, 255, 0.6);
+  --muted-text: #8ea4b5;
+}
+
+* {
+  box-sizing: border-box;
 }
 
 body {
@@ -11,6 +16,26 @@ body {
   background: transparent;
   overflow: hidden;
   font-family: 'Segoe UI', sans-serif;
+  color: var(--nickname-color);
+}
+
+#tsrail-overlay {
+  width: var(--rail-width);
+  min-height: 100vh;
+  background: var(--rail-bg);
+}
+
+#tsrail-error {
+  border: 1px solid #ff6b6b;
+  color: #ffd7d7;
+  background: rgba(71, 10, 10, 0.75);
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 13px;
+}
+
+#tsrail-error.hidden {
+  display: none;
 }
 
 #tsrail-rail {
@@ -21,6 +46,7 @@ body {
   flex-direction: column;
   align-items: center;
   gap: 18px;
+  padding: 18px 0 12px;
   background: var(--rail-bg);
 }
 
