@@ -337,9 +337,9 @@ class TSRailState:
 
     def target_channel_active(self) -> bool:
         target = self.config.policies.target_channel
-        if target:
-            return self.server_channel_id == target
-        return self.server_channel_id is not None
+        if target is None:
+            return False
+        return self.server_channel_id == target
 
     def refresh_target_from_name(self) -> None:
         name = self.config.policies.target_channel_name
