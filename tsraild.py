@@ -217,8 +217,8 @@ class ClientQueryConnection:
                     schandlerid = int(data["schandlerid"])
                 if data.get("cid"):
                     self.state.server_channel_id = int(data["cid"])
-                if data.get("client_id"):
-                    self.state.own_clid = data["client_id"]
+                if data.get("clid"):
+                    self.state.own_clid = data["clid"]
         self.state.schandlerid = schandlerid
         return schandlerid
 
@@ -486,12 +486,32 @@ def parse_kv(line: str) -> Dict[str, str]:
         if "=" not in pair:
             continue
         key, value = pair.split("=", 1)
-        data[key] = value.replace("\\s", " ")
+        data[key] = decode_ts(value)
     return data
 
 
 def decode_ts(value: str) -> str:
-    return value.replace("\\s", " ").replace("\\p", "|")
+    mapping = {
+        "s": " ",
+        "p": "|",
+        "/": "/",
+        "\\": "\\",
+        "n": "\n",
+        "r": "\r",
+        "t": "\t",
+    }
+    result_chars: List[str] = []
+    i = 0
+    while i < len(value):
+        ch = value[i]
+        if ch == "\\" and i + 1 < len(value):
+            i += 1
+            escaped = value[i]
+            result_chars.append(mapping.get(escaped, escaped))
+        else:
+            result_chars.append(ch)
+        i += 1
+    return "".join(result_chars)
 
 
 def parse_multi_kv(line: str) -> List[Dict[str, str]]:
