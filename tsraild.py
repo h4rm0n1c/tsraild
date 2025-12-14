@@ -3,6 +3,7 @@ import asyncio
 import json
 import os
 import pathlib
+import shutil
 import signal
 import time
 from dataclasses import dataclass, field
@@ -13,6 +14,7 @@ DATA_DIR = pathlib.Path(os.path.expanduser("~/.local/share/tsrail"))
 ASSETS_DIR = DATA_DIR / "assets"
 OVERLAY_DIR = DATA_DIR / "overlay"
 DEFAULT_OVERLAY_DIR = pathlib.Path(__file__).resolve().parent / "overlay"
+DEFAULT_ASSETS_DIR = DEFAULT_OVERLAY_DIR.parent / "assets"
 SOCKET_PATH = pathlib.Path(os.environ.get("XDG_RUNTIME_DIR", f"/run/user/{os.getuid()}")) / "tsrail.sock"
 KEY_FILE = CONFIG_DIR / "clientquery.key"
 CONFIG_FILE = CONFIG_DIR / "config.json"
@@ -27,6 +29,40 @@ def ensure_dirs():
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     ASSETS_DIR.mkdir(parents=True, exist_ok=True)
     OVERLAY_DIR.mkdir(parents=True, exist_ok=True)
+    seed_default_tree(DEFAULT_ASSETS_DIR, ASSETS_DIR)
+    seed_default_tree(DEFAULT_OVERLAY_DIR, OVERLAY_DIR)
+
+
+def seed_default_tree(src_base: pathlib.Path, dest_base: pathlib.Path) -> None:
+    if not src_base.exists():
+        return
+    for src in src_base.rglob("*"):
+        if not src.is_file():
+            continue
+        rel = src.relative_to(src_base)
+        dest = dest_base / rel
+        if dest.exists():
+            continue
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(src, dest)
+
+
+def ensure_user_assets(uid: str) -> None:
+    if not uid:
+        return
+    user_dir = ASSETS_DIR / "users" / uid
+    user_dir.mkdir(parents=True, exist_ok=True)
+    default_dirs = [ASSETS_DIR / "users" / "example", DEFAULT_ASSETS_DIR / "users" / "example"]
+    source_dir = next((path for path in default_dirs if path.exists()), None)
+    if not source_dir:
+        return
+    for name in ("avatar.svg", "avatar_talk.svg"):
+        dst = user_dir / name
+        if dst.exists():
+            continue
+        src = source_dir / name
+        if src.is_file():
+            shutil.copy2(src, dst)
 
 
 @dataclass
@@ -595,6 +631,7 @@ class TSRailState:
         return None
 
     def _build_assets(self, client: Client) -> Dict[str, Optional[str]]:
+        ensure_user_assets(client.uid)
         avatar_idle = f"assets/users/{client.uid}/avatar.svg"
         avatar_talk = f"assets/users/{client.uid}/avatar_talk.svg"
         frame_idle = "assets/frames/monitor_idle.svg"
@@ -845,7 +882,7 @@ class HttpServer:
         if overlay:
             base_candidates = [OVERLAY_DIR, DEFAULT_OVERLAY_DIR]
         else:
-            base_candidates = [ASSETS_DIR, DEFAULT_OVERLAY_DIR.parent / "assets"]
+            base_candidates = [ASSETS_DIR, DEFAULT_ASSETS_DIR]
         for base in base_candidates:
             candidate = base / rel
             if candidate.is_file():
