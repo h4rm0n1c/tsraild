@@ -113,7 +113,7 @@ function renderRail(state) {
 
   if (empty) empty.remove();
 
-  users.forEach((user) => {
+  users.forEach((user, index) => {
     let node = existing.get(user.uid);
     if (!node) {
       node = buildUser(user);
@@ -125,7 +125,12 @@ function renderRail(state) {
         nick.textContent = user.nickname;
       }
     }
-    rail.appendChild(node);
+
+    node.style.order = index;
+    if (node.parentElement !== rail) {
+      rail.appendChild(node);
+    }
+
     existing.delete(user.uid);
   });
 
