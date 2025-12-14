@@ -57,16 +57,19 @@ body {
   color: var(--nickname-color);
   text-align: center;
   transition: transform 0.25s ease, filter 0.25s ease;
+  transform: translateY(6px);
+  filter: brightness(0.55) contrast(0.85) saturate(0.85);
 }
 
 .tsrail-user.idle {
-  transform: translateY(0);
-  filter: brightness(0.8);
+  transform: translateY(6px);
+  filter: brightness(0.55) contrast(0.85) saturate(0.85);
 }
 
 .tsrail-user.talking {
   transform: translateY(-8px);
-  filter: brightness(1.2) drop-shadow(0 0 12px rgba(0, 255, 255, 0.8));
+  filter: brightness(1.15) contrast(1.2) saturate(1.05)
+    drop-shadow(0 0 14px rgba(0, 255, 255, 0.9));
 }
 
 

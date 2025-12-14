@@ -1,5 +1,11 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 320">
-  <rect x="8" y="8" width="304" height="260" rx="18" ry="18" fill="none" stroke="#16d1ff" stroke-width="6" />
-  <rect x="32" y="32" width="256" height="212" rx="12" ry="12" fill="#121826" fill-opacity="0.3" stroke="#0d80c7" stroke-width="4" />
-  <text x="160" y="300" text-anchor="middle" font-size="22" fill="#16d1ff" font-family="Segoe UI, sans-serif">TS Rail Idle</text>
+  <defs>
+    <linearGradient id="idle-edge" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0%" stop-color="#1ac8ff" />
+      <stop offset="100%" stop-color="#0fa2ff" />
+    </linearGradient>
+  </defs>
+  <rect x="12" y="12" width="296" height="240" rx="22" ry="22" fill="#0a0f1f" stroke="url(#idle-edge)" stroke-width="8" />
+  <rect x="30" y="30" width="260" height="204" rx="14" ry="14" fill="#0ecbff" fill-opacity="0.3" stroke="#1ac8ff" stroke-width="4" />
+  <rect x="94" y="262" width="132" height="16" rx="8" ry="8" fill="#0a0f1f" stroke="#0fa2ff" stroke-width="3" />
 </svg>
