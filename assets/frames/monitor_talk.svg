@@ -12,7 +12,12 @@
       </feMerge>
     </filter>
   </defs>
-  <rect x="12" y="12" width="296" height="240" rx="22" ry="22" fill="#0a0f1f" stroke="url(#talk-edge)" stroke-width="8" filter="url(#glow)" />
+  <rect x="12" y="12" width="296" height="240" rx="22" ry="22" fill="none" stroke="url(#talk-edge)" stroke-width="8" filter="url(#glow)" />
+  <path
+    d="M12 12h296v240H12z M30 30h260v204H30z"
+    fill="#0a0f1f"
+    fill-rule="evenodd"
+  />
   <rect x="30" y="30" width="260" height="204" rx="14" ry="14" fill="#1af8ff" fill-opacity="0.3" stroke="#64fff6" stroke-width="4" />
   <rect x="94" y="262" width="132" height="16" rx="8" ry="8" fill="#0a0f1f" stroke="#2bffe0" stroke-width="3" />
 </svg>

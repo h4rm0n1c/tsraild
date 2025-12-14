@@ -5,7 +5,12 @@
       <stop offset="100%" stop-color="#0fa2ff" />
     </linearGradient>
   </defs>
-  <rect x="12" y="12" width="296" height="240" rx="22" ry="22" fill="#0a0f1f" stroke="url(#idle-edge)" stroke-width="8" />
+  <rect x="12" y="12" width="296" height="240" rx="22" ry="22" fill="none" stroke="url(#idle-edge)" stroke-width="8" />
+  <path
+    d="M12 12h296v240H12z M30 30h260v204H30z"
+    fill="#0a0f1f"
+    fill-rule="evenodd"
+  />
   <rect x="30" y="30" width="260" height="204" rx="14" ry="14" fill="#0ecbff" fill-opacity="0.3" stroke="#1ac8ff" stroke-width="4" />
   <rect x="94" y="262" width="132" height="16" rx="8" ry="8" fill="#0a0f1f" stroke="#0fa2ff" stroke-width="3" />
 </svg>

@@ -4,6 +4,13 @@
   --nickname-color: #b6fffe;
   --nickname-shadow: 0 0 8px rgba(0, 255, 255, 0.6);
   --muted-text: #8ea4b5;
+
+  --idle-translate: 8px;
+  --talk-translate: -6px;
+
+  --idle-filter: brightness(0.55) contrast(0.85) saturate(0.85);
+  --talk-filter: brightness(1.18) contrast(1.22) saturate(1.05)
+    drop-shadow(0 0 14px rgba(0, 255, 255, 0.9));
 }
 
 * {
@@ -56,20 +63,18 @@ body {
   height: 320px;
   color: var(--nickname-color);
   text-align: center;
-  transition: transform 0.25s ease, filter 0.25s ease;
-  transform: translateY(6px);
-  filter: brightness(0.55) contrast(0.85) saturate(0.85);
+  transform: translateY(var(--idle-translate));
+  filter: var(--idle-filter);
+  animation-duration: 0.35s;
+  animation-fill-mode: forwards;
 }
 
 .tsrail-user.idle {
-  transform: translateY(6px);
-  filter: brightness(0.55) contrast(0.85) saturate(0.85);
+  animation-name: hop-idle;
 }
 
 .tsrail-user.talking {
-  transform: translateY(-8px);
-  filter: brightness(1.15) contrast(1.2) saturate(1.05)
-    drop-shadow(0 0 14px rgba(0, 255, 255, 0.9));
+  animation-name: hop-talk;
 }
 
 
@@ -130,4 +135,36 @@ body {
   color: #888;
   margin-top: 40px;
   font-size: 14px;
+}
+
+@keyframes hop-talk {
+  0% {
+    transform: translateY(var(--idle-translate));
+    filter: var(--idle-filter);
+  }
+  45% {
+    transform: translateY(-14px);
+    filter: brightness(1.28) contrast(1.28) saturate(1.1)
+      drop-shadow(0 0 16px rgba(0, 255, 255, 0.95));
+  }
+  100% {
+    transform: translateY(var(--talk-translate));
+    filter: var(--talk-filter);
+  }
+}
+
+@keyframes hop-idle {
+  0% {
+    transform: translateY(var(--talk-translate));
+    filter: var(--talk-filter);
+  }
+  40% {
+    transform: translateY(-10px);
+    filter: brightness(1.05) contrast(1.05) saturate(1.02)
+      drop-shadow(0 0 10px rgba(0, 255, 255, 0.35));
+  }
+  100% {
+    transform: translateY(var(--idle-translate));
+    filter: var(--idle-filter);
+  }
 }
