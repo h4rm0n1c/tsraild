@@ -9,6 +9,10 @@ Usage: tsrailctl <command> [args]
 
 Commands:
   status
+  service-start
+  service-stop
+  service-restart
+  service-status
   key-status
   setkey <apikey>
   approve-uid <uid>
@@ -31,6 +35,7 @@ Shortcuts:
   state         -> dump-state (pretty if jq is available)
   users         -> list approved users in the overlay
   unknowns      -> list unknown users in the channel
+  service-*     -> manage daemon with ~/tsraild/tsraild.py
 USAGE
 }
 
@@ -43,6 +48,50 @@ require_socat() {
 
 send_cmd() {
   printf '%s\n' "$1" | socat - UNIX-CONNECT:"$SOCK"
+}
+
+service_pidfile() {
+  printf '%s\n' "${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/tsraild.pid"
+}
+
+service_logfile() {
+  printf '%s\n' "$HOME/.local/share/tsrail/tsraild.log"
+}
+
+service_start() {
+  pidfile="$(service_pidfile)"
+  logfile="$(service_logfile)"
+  if [ -f "$pidfile" ] && kill -0 "$(cat "$pidfile")" 2>/dev/null; then
+    echo "tsraild already running"
+    return 0
+  fi
+  mkdir -p "$(dirname "$logfile")"
+  (cd "$HOME/tsraild" && nohup ./tsraild.py >>"$logfile" 2>&1 & echo $! >"$pidfile")
+  echo "started tsraild"
+}
+
+service_stop() {
+  pidfile="$(service_pidfile)"
+  if [ ! -f "$pidfile" ]; then
+    echo "tsraild not running"
+    return 0
+  fi
+  pid="$(cat "$pidfile")"
+  if kill -0 "$pid" 2>/dev/null; then
+    kill "$pid"
+  fi
+  rm -f "$pidfile"
+  echo "stopped tsraild"
+}
+
+service_status() {
+  pidfile="$(service_pidfile)"
+  if [ -f "$pidfile" ] && kill -0 "$(cat "$pidfile")" 2>/dev/null; then
+    echo "tsraild running"
+  else
+    echo "tsraild not running"
+    return 1
+  fi
 }
 
 pretty_json() {
@@ -86,6 +135,35 @@ case "$cmd" in
       exit 1
     fi
     send_cmd "$cmd"
+    ;;
+  service-start)
+    if [ $# -ne 0 ]; then
+      usage
+      exit 1
+    fi
+    service_start
+    ;;
+  service-stop)
+    if [ $# -ne 0 ]; then
+      usage
+      exit 1
+    fi
+    service_stop
+    ;;
+  service-restart)
+    if [ $# -ne 0 ]; then
+      usage
+      exit 1
+    fi
+    service_stop
+    service_start
+    ;;
+  service-status)
+    if [ $# -ne 0 ]; then
+      usage
+      exit 1
+    fi
+    service_status
     ;;
   state)
     if [ $# -ne 0 ]; then
