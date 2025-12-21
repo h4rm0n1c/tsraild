@@ -43,6 +43,26 @@ This document captures the intended behavior and integration points for the TS R
   - `ignore-uid <uid>` / `unignore-uid <uid>` / `ignore-list`: manage the ignore set.
   - `policy <name> <value>`: update runtime policies (`auto-mute-unknown`, `require-approved`, `target-channel`, `show-ignored`).
 
+## Helper Script
+
+For day-to-day control, `scripts/tsrailctl` provides a unified shell wrapper that sends
+control socket commands over `socat` using the default socket path. Use it directly
+for status checks, API key management, approvals, ignores, and policy changes. It also
+includes read-only helpers (`state`, `users`, `unknowns`) that display daemon info and
+optionally pretty-print JSON when `jq` is available.
+
+## SysV-Style Service Management
+
+For SysV-style user-space management, `scripts/tsrailctl` includes service commands
+that start/stop the daemon in `~/tsraild/`, track a PID file under
+`$XDG_RUNTIME_DIR` (or `/run/user/<uid>`), and log to
+`~/.local/share/tsrail/tsraild.log`:
+
+- `tsrailctl service-start`
+- `tsrailctl service-stop`
+- `tsrailctl service-restart`
+- `tsrailctl service-status`
+
 ## HTTP Interface
 
 - **Endpoints:**
@@ -66,4 +86,3 @@ This document captures the intended behavior and integration points for the TS R
     - `assets/users/<uid>/` — per-user avatars, e.g., `avatar.png` (idle), `avatar.gif` or `avatar.apng` (talk).
   - If a talk asset is missing for a user, reuse the idle asset for both states.
 - **Overlay defaults:** Provide placeholder assets for users lacking custom files, and ensure transparent backgrounds for compositing in OBS.
-
