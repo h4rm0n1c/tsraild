@@ -1,5 +1,5 @@
 :root {
-  --rail-width: 320px;
+  --rail-width: 224px;
   --rail-bg: rgba(0, 0, 0, 0);
   --nickname-color: #b6fffe;
   --nickname-shadow: 0 0 8px rgba(0, 255, 255, 0.6);
@@ -45,15 +45,15 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 18px;
-  padding: 18px 0 12px;
+  gap: 12px;
+  padding: 12px 0 8px;
   background: var(--rail-bg);
 }
 
 .tsrail-user {
   position: relative;
-  width: 240px;
-  height: 260px;
+  width: 168px;
+  height: 182px;
   color: var(--nickname-color);
   text-align: center;
   transition: transform 0.25s ease, filter 0.25s ease;
@@ -65,7 +65,7 @@ body {
 }
 
 .tsrail-user.talking {
-  transform: translateY(-8px);
+  transform: translateY(-6px);
   filter: brightness(1.2) drop-shadow(0 0 12px rgba(0, 255, 255, 0.8));
 }
 
@@ -76,7 +76,7 @@ body {
 }
 
 .tsrail-avatar {
-  inset: 26px 26px 70px;
+  inset: 18px 18px 50px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -116,9 +116,9 @@ body {
 
 .tsrail-user .tsrail-nickname {
   position: absolute;
-  bottom: -26px;
+  bottom: -20px;
   width: 100%;
-  font-size: 16px;
+  font-size: 18px;
   letter-spacing: 0.5px;
   text-shadow: var(--nickname-shadow);
 }
