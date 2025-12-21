@@ -51,6 +51,66 @@ for status checks, API key management, approvals, ignores, and policy changes. I
 includes read-only helpers (`state`, `users`, `unknowns`) that display daemon info and
 optionally pretty-print JSON when `jq` is available.
 
+## SysV-Style Service Initialization (User-Space)
+
+Below is a simple SysV-style user-space init script outline. It assumes the repo
+is located at `~/tsraild/` (per your environment) and writes a PID file under
+`$XDG_RUNTIME_DIR` (or `/run/user/<uid>`). This can be placed under
+`~/.local/etc/init.d/tsraild` or similar and invoked by your user-session init.
+
+```sh
+#!/bin/sh
+set -eu
+
+NAME=tsraild
+APP_DIR="$HOME/tsraild"
+PIDFILE="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/tsraild.pid"
+LOGFILE="$HOME/.local/share/tsrail/tsraild.log"
+
+start() {
+  if [ -f "$PIDFILE" ] && kill -0 "$(cat "$PIDFILE")" 2>/dev/null; then
+    echo "$NAME already running"
+    exit 0
+  fi
+  mkdir -p "$(dirname "$LOGFILE")"
+  (cd "$APP_DIR" && nohup ./tsraild.py >>"$LOGFILE" 2>&1 & echo $! >"$PIDFILE")
+  echo "started $NAME"
+}
+
+stop() {
+  if [ ! -f "$PIDFILE" ]; then
+    echo "$NAME not running"
+    exit 0
+  fi
+  pid="$(cat "$PIDFILE")"
+  if kill -0 "$pid" 2>/dev/null; then
+    kill "$pid"
+  fi
+  rm -f "$PIDFILE"
+  echo "stopped $NAME"
+}
+
+status() {
+  if [ -f "$PIDFILE" ] && kill -0 "$(cat "$PIDFILE")" 2>/dev/null; then
+    echo "$NAME running"
+  else
+    echo "$NAME not running"
+    exit 1
+  fi
+}
+
+case "${1:-}" in
+  start) start ;;
+  stop) stop ;;
+  restart) stop; start ;;
+  status) status ;;
+  *) echo "usage: $0 {start|stop|restart|status}"; exit 1 ;;
+esac
+```
+
+You can pair this with the control helper (`scripts/tsrailctl`) for day-to-day
+management once the service is up.
+
 ## HTTP Interface
 
 - **Endpoints:**
