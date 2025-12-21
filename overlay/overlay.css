@@ -56,16 +56,14 @@ body {
   height: 182px;
   color: var(--nickname-color);
   text-align: center;
-  transition: transform 0.25s ease, filter 0.25s ease;
+  transition: filter 0.25s ease;
 }
 
 .tsrail-user.idle {
-  transform: translateY(0);
   filter: brightness(0.8);
 }
 
 .tsrail-user.talking {
-  transform: translateY(-6px);
   filter: brightness(1.2) drop-shadow(0 0 12px rgba(0, 255, 255, 0.8));
 }
 
@@ -81,6 +79,15 @@ body {
   align-items: center;
   justify-content: center;
   z-index: 1;
+  transition: transform 0.25s ease;
+}
+
+.tsrail-user.idle .tsrail-avatar {
+  transform: translateY(0);
+}
+
+.tsrail-user.talking .tsrail-avatar {
+  transform: translateY(-6px);
 }
 
 .tsrail-frame {
