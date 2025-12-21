@@ -74,20 +74,29 @@ body {
 }
 
 .tsrail-avatar {
-  inset: 18px 18px 50px;
+  inset: 22px 18px 38px;
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 1;
-  transition: transform 0.25s ease;
 }
 
 .tsrail-user.idle .tsrail-avatar {
-  transform: translateY(0);
+  animation: none;
 }
 
 .tsrail-user.talking .tsrail-avatar {
-  transform: translateY(-6px);
+  animation: avatar-hop 0.45s ease-in-out infinite;
+}
+
+@keyframes avatar-hop {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
 }
 
 .tsrail-frame {
