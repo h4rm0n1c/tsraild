@@ -90,6 +90,7 @@ body {
   justify-content: center;
   z-index: 1;
   background: #000;
+  overflow: hidden;
 }
 
 .tsrail-user.idle .tsrail-avatar {
@@ -102,7 +103,8 @@ body {
 
 .tsrail-user.talking .tsrail-avatar {
   animation: avatar-hop-in 0.45s ease-out;
-  filter: brightness(1.1) drop-shadow(0 0 12px rgba(0, 255, 255, 0.8));
+  filter: brightness(1.1);
+  box-shadow: inset 0 0 12px rgba(0, 255, 255, 0.8);
 }
 
 @keyframes avatar-hop-in {
