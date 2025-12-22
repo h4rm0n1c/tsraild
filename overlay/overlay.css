@@ -64,7 +64,8 @@ body {
 }
 
 .tsrail-user.idle .tsrail-nickname {
-  color: #000;
+  color: #ff3b3b;
+  text-shadow: 0 0 8px rgba(255, 50, 50, 0.7);
 }
 
 .tsrail-user.talking {
@@ -72,7 +73,8 @@ body {
 }
 
 .tsrail-user.talking .tsrail-nickname {
-  color: var(--nickname-color);
+  color: #5bff72;
+  text-shadow: 0 0 8px rgba(80, 255, 120, 0.8);
 }
 
 
