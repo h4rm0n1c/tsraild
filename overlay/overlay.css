@@ -104,7 +104,9 @@ body {
 .tsrail-user.talking .tsrail-avatar {
   animation: avatar-hop-in 0.45s ease-out;
   filter: brightness(1.1);
-  box-shadow: inset 0 0 12px rgba(0, 255, 255, 0.8);
+  box-shadow:
+    inset 0 0 14px rgba(0, 255, 255, 0.9),
+    inset 0 0 28px rgba(0, 255, 255, 0.65);
 }
 
 @keyframes avatar-hop-in {
