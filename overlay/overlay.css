@@ -185,8 +185,12 @@ body {
 
 .tsrail-user .frame-talk {
   opacity: 0;
-  transition: none;
-  will-change: auto;
+  transition: opacity 0.2s ease;
+  will-change: opacity;
+}
+
+.tsrail-user.talking .frame-talk {
+  opacity: 1;
 }
 
 .tsrail-user .tsrail-nickname {
