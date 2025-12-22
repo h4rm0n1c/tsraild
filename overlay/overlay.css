@@ -60,7 +60,7 @@ body {
 }
 
 .tsrail-user.idle {
-  filter: brightness(0.8);
+  filter: none;
 }
 
 .tsrail-user.idle .tsrail-nickname {
@@ -93,6 +93,10 @@ body {
 
 .tsrail-user.idle .tsrail-avatar {
   animation: avatar-hop-out 0.45s ease-out;
+}
+
+.tsrail-user.idle .tsrail-avatar {
+  filter: brightness(0.8);
 }
 
 .tsrail-user.talking .tsrail-avatar {
@@ -141,6 +145,7 @@ body {
 .tsrail-user .avatar-idle {
   opacity: 1;
   transition: opacity 0.2s ease;
+  transition-delay: 0s;
   will-change: opacity;
 }
 
@@ -148,22 +153,32 @@ body {
 .tsrail-user .avatar-talk {
   opacity: 0;
   transition: opacity 0.2s ease;
+  transition-delay: 0s;
   will-change: opacity;
 }
 
 .tsrail-user.talking .frame-talk,
 .tsrail-user.talking .avatar-talk {
   opacity: 1;
+  transition-delay: 0s;
 }
 
 .tsrail-user.talking .frame-idle,
 .tsrail-user.talking .avatar-idle {
   opacity: 0;
+  transition-delay: 0.05s;
 }
 
 .tsrail-user.idle .frame-idle,
 .tsrail-user.idle .avatar-idle {
   opacity: 1;
+  transition-delay: 0s;
+}
+
+.tsrail-user.idle .frame-talk,
+.tsrail-user.idle .avatar-talk {
+  opacity: 0;
+  transition-delay: 0.05s;
 }
 
 .tsrail-user .tsrail-nickname {
