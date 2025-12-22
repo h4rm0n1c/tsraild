@@ -184,8 +184,8 @@ body {
 
 .tsrail-user .frame-idle {
   opacity: 1;
-  transition: none;
-  will-change: auto;
+  transition: opacity 0.15s ease;
+  will-change: opacity;
 }
 
 .tsrail-user .frame-talk {
@@ -196,6 +196,21 @@ body {
 
 .tsrail-user.talking .frame-talk {
   opacity: 1;
+}
+
+.tsrail-user.talking .frame-idle {
+  opacity: 0;
+  transition-delay: 0.05s;
+}
+
+.tsrail-user.idle .frame-idle {
+  opacity: 1;
+  transition-delay: 0s;
+}
+
+.tsrail-user.idle .frame-talk {
+  opacity: 0;
+  transition-delay: 0.05s;
 }
 
 .tsrail-user .tsrail-nickname {
