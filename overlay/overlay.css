@@ -89,6 +89,15 @@ body {
   align-items: center;
   justify-content: center;
   z-index: 1;
+  position: relative;
+}
+
+.tsrail-avatar::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: #000;
+  z-index: 0;
 }
 
 .tsrail-user.idle .tsrail-avatar {
@@ -139,6 +148,7 @@ body {
   object-fit: contain;
   transform: translateZ(0);
   backface-visibility: hidden;
+  z-index: 1;
 }
 
 .tsrail-user .avatar-idle {
