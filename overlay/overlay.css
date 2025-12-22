@@ -133,12 +133,17 @@ body {
   width: 100%;
   height: 100%;
   object-fit: contain;
+  transform: translateZ(0);
+  backface-visibility: hidden;
 }
 
 .tsrail-user .frame-talk,
-.tsrail-user .avatar-talk {
+.tsrail-user .avatar-talk,
+.tsrail-user .frame-idle,
+.tsrail-user .avatar-idle {
   opacity: 0;
   transition: opacity 0.2s ease;
+  will-change: opacity;
 }
 
 .tsrail-user.talking .frame-talk,
@@ -149,6 +154,11 @@ body {
 .tsrail-user.talking .frame-idle,
 .tsrail-user.talking .avatar-idle {
   opacity: 0;
+}
+
+.tsrail-user.idle .frame-idle,
+.tsrail-user.idle .avatar-idle {
+  opacity: 1;
 }
 
 .tsrail-user .tsrail-nickname {
