@@ -63,8 +63,16 @@ body {
   filter: brightness(0.8);
 }
 
+.tsrail-user.idle .tsrail-nickname {
+  color: #000;
+}
+
 .tsrail-user.talking {
   filter: brightness(1.2) drop-shadow(0 0 12px rgba(0, 255, 255, 0.8));
+}
+
+.tsrail-user.talking .tsrail-nickname {
+  color: var(--nickname-color);
 }
 
 
