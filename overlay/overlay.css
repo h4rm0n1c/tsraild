@@ -142,7 +142,7 @@ body {
 
 .tsrail-user .tsrail-nickname {
   position: absolute;
-  bottom: -20px;
+  bottom: 12px;
   width: 100%;
   font-size: 18px;
   letter-spacing: 0.5px;
