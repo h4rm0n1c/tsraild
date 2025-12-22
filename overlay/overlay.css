@@ -147,6 +147,7 @@ body {
   font-size: 18px;
   letter-spacing: 0.5px;
   text-shadow: var(--nickname-shadow);
+  z-index: 3;
 }
 
 .tsrail-empty {
