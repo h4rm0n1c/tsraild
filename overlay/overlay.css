@@ -16,7 +16,7 @@ body {
   background: transparent;
   overflow: hidden;
   font-family: 'Segoe UI', sans-serif;
-  color: var(--nickname-color);
+  color: #ff3b3b;
 }
 
 #tsrail-overlay {
@@ -54,7 +54,7 @@ body {
   position: relative;
   width: 168px;
   height: 182px;
-  color: var(--nickname-color);
+  color: #ff3b3b;
   text-align: center;
   transition: filter 0.25s ease;
 }
@@ -69,7 +69,7 @@ body {
 }
 
 .tsrail-user.talking {
-  filter: brightness(1.2) drop-shadow(0 0 12px rgba(0, 255, 255, 0.8));
+  filter: brightness(1.1);
 }
 
 .tsrail-user.talking .tsrail-nickname {
@@ -97,6 +97,7 @@ body {
 
 .tsrail-user.talking .tsrail-avatar {
   animation: avatar-hop-in 0.45s ease-out;
+  filter: drop-shadow(0 0 12px rgba(0, 255, 255, 0.8));
 }
 
 @keyframes avatar-hop-in {
@@ -156,7 +157,8 @@ body {
   width: 100%;
   font-size: 18px;
   letter-spacing: 0.5px;
-  text-shadow: var(--nickname-shadow);
+  color: #ff3b3b;
+  text-shadow: 0 0 8px rgba(255, 50, 50, 0.7);
   z-index: 3;
 }
 
