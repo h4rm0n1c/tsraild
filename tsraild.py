@@ -260,6 +260,9 @@ class ClientQueryConnection:
     async def _refresh_identity(self) -> None:
         resp = await self.send_command("whoami")
         self._update_identity(resp)
+        if self.state.own_clid and (self.state.own_uid is None or self.state.own_nickname is None):
+            resp = await self.send_command(f"clientinfo clid={self.state.own_clid}")
+            self._update_identity(resp)
 
     async def _select_schandler(self) -> int:
         resp = await self.send_command("whoami")
@@ -270,18 +273,19 @@ class ClientQueryConnection:
     def _update_identity(self, resp: List[str]) -> int:
         schandlerid = self.state.schandlerid or 1
         for line in resp:
-            if line.startswith("clid"):
-                data = parse_kv(line)
-                if data.get("schandlerid"):
-                    schandlerid = int(data["schandlerid"])
-                if data.get("cid"):
-                    self.state.server_channel_id = int(data["cid"])
-                if data.get("clid"):
-                    self.state.own_clid = data["clid"]
-                if data.get("client_unique_identifier"):
-                    self.state.own_uid = data["client_unique_identifier"]
-                if data.get("client_nickname"):
-                    self.state.own_nickname = decode_ts(data["client_nickname"])
+            if not line or line.startswith("error "):
+                continue
+            data = parse_kv(line)
+            if data.get("schandlerid"):
+                schandlerid = int(data["schandlerid"])
+            if data.get("cid"):
+                self.state.server_channel_id = int(data["cid"])
+            if data.get("clid"):
+                self.state.own_clid = data["clid"]
+            if data.get("client_unique_identifier"):
+                self.state.own_uid = data["client_unique_identifier"]
+            if data.get("client_nickname"):
+                self.state.own_nickname = decode_ts(data["client_nickname"])
         self.state.schandlerid = schandlerid
         return schandlerid
 
