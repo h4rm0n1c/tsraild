@@ -90,6 +90,14 @@ function ensureAvatarAssets(wrapper, assets) {
   }
   avatarIdle.src = assetUrl(assets.avatar_idle) || '';
 
+  let avatarUnderlay = avatar.querySelector('.avatar-underlay');
+  if (!avatarUnderlay) {
+    avatarUnderlay = document.createElement('img');
+    avatarUnderlay.className = 'avatar avatar-underlay';
+    avatar.appendChild(avatarUnderlay);
+  }
+  avatarUnderlay.src = assetUrl(assets.avatar_idle) || '';
+
   const talkSrc = assets.avatar_talk || assets.avatar_idle;
   const talkUrl = talkSrc ? assetUrl(talkSrc) : null;
   let avatarTalk = avatar.querySelector('.avatar-talk');
