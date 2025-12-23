@@ -184,33 +184,18 @@ body {
 
 .tsrail-user .frame-idle {
   opacity: 1;
-  transition: opacity 0.15s ease;
-  will-change: opacity;
+  transition: none;
+  will-change: auto;
 }
 
 .tsrail-user .frame-talk {
   opacity: 0;
-  transition: opacity 0.2s ease;
-  will-change: opacity;
+  transition: none;
+  will-change: auto;
 }
 
 .tsrail-user.talking .frame-talk {
   opacity: 1;
-}
-
-.tsrail-user.talking .frame-idle {
-  opacity: 0;
-  transition-delay: 0.05s;
-}
-
-.tsrail-user.idle .frame-idle {
-  opacity: 1;
-  transition-delay: 0s;
-}
-
-.tsrail-user.idle .frame-talk {
-  opacity: 0;
-  transition-delay: 0.05s;
 }
 
 .tsrail-user .tsrail-nickname {
