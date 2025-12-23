@@ -88,7 +88,8 @@ function ensureAvatarAssets(wrapper, assets) {
     avatarIdle.className = 'avatar avatar-idle';
     avatar.appendChild(avatarIdle);
   }
-  avatarIdle.src = assetUrl(assets.avatar_idle) || '';
+  const idleAvatarSrc = assetUrl(assets.avatar_idle) || '';
+  avatarIdle.src = idleAvatarSrc;
 
   let avatarUnderlay = avatar.querySelector('.avatar-underlay');
   if (!avatarUnderlay) {
@@ -96,7 +97,7 @@ function ensureAvatarAssets(wrapper, assets) {
     avatarUnderlay.className = 'avatar avatar-underlay';
     avatar.appendChild(avatarUnderlay);
   }
-  avatarUnderlay.src = assetUrl(assets.avatar_idle) || '';
+  avatarUnderlay.src = idleAvatarSrc;
 
   const talkSrc = assets.avatar_talk || assets.avatar_idle;
   const talkUrl = talkSrc ? assetUrl(talkSrc) : null;
