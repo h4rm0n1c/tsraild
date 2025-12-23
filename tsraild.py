@@ -132,6 +132,7 @@ class ClientQueryConnection:
         self.link_ok = False
         self.auth_ok = False
         self.reader_task: Optional[asyncio.Task] = None
+        self.refresh_task: Optional[asyncio.Task] = None
 
     async def run(self) -> None:
         while self.running:
@@ -140,6 +141,7 @@ class ClientQueryConnection:
                 self.link_ok = True
                 self.reader_task = asyncio.create_task(self._reader_loop())
                 await self._post_connect()
+                self.refresh_task = asyncio.create_task(self._refresh_loop())
                 await self.reader_task
             except (ConnectionError, OSError):
                 self.link_ok = False
@@ -147,6 +149,10 @@ class ClientQueryConnection:
                 self.state.clear_clients()
                 await asyncio.sleep(2.0)
             finally:
+                if self.refresh_task:
+                    self.refresh_task.cancel()
+                    await asyncio.gather(self.refresh_task, return_exceptions=True)
+                    self.refresh_task = None
                 if self.writer:
                     self.writer.close()
                     await self.writer.wait_closed()
@@ -165,6 +171,7 @@ class ClientQueryConnection:
         self.auth_ok = True
         await self._select_schandler()
         await self.send_command(f"clientnotifyregister schandlerid={self.state.schandlerid or 1} event=any")
+        await self.send_command("servernotifyregister event=any")
         await self.sync_state()
 
     async def sync_state(self) -> None:
@@ -172,6 +179,18 @@ class ClientQueryConnection:
         await self._refresh_channels()
         await self._refresh_channel_name()
         await self._refresh_clients()
+
+    async def _refresh_loop(self) -> None:
+        while self.running:
+            await asyncio.sleep(5.0)
+            if not self.auth_ok:
+                continue
+            try:
+                await self.sync_state()
+            except (ConnectionError, OSError, asyncio.CancelledError):
+                raise
+            except Exception:
+                continue
 
     async def stop(self) -> None:
         self.running = False
@@ -187,7 +206,15 @@ class ClientQueryConnection:
         resp = await self.send_command(f"auth apikey={key}")
         if self._is_ok(resp):
             self.auth_ok = True
-            await self.sync_state()
+            await self.on_server_change()
+
+    async def on_server_change(self) -> None:
+        if not self.auth_ok:
+            return
+        await self._select_schandler()
+        await self.send_command(f"clientnotifyregister schandlerid={self.state.schandlerid or 1} event=any")
+        await self.send_command("servernotifyregister event=any")
+        await self.sync_state()
 
     async def send_command(self, cmd: str) -> List[str]:
         if not self.writer or not self.reader:
@@ -213,6 +240,10 @@ class ClientQueryConnection:
                 continue
             if line.startswith("notify"):
                 self.state.handle_notification(line)
+            elif line.startswith("error id=1796"):
+                if self.writer:
+                    self.writer.write(b"\n")
+                    await self.writer.drain()
             elif self.pending is not None:
                 self.pending_buffer.append(line)
                 if line.startswith("error "):
@@ -356,6 +387,10 @@ class TSRailState:
             self._talk_status(data)
         elif event.startswith("notifyclientupdated"):
             self._client_updated(data)
+        elif event.startswith("notifyconnectstatuschange"):
+            self._connect_status_changed(data)
+        elif event.startswith("notifycurrentserverconnectionchanged"):
+            self._server_connection_changed(data)
         self.last_ts = time.time()
 
     def monitor_channel_id(self) -> Optional[int]:
@@ -465,6 +500,27 @@ class TSRailState:
             return
         if "client_nickname" in data:
             self.clients[clid].nickname = decode_ts(data["client_nickname"])
+
+    def _connect_status_changed(self, data: Dict[str, str]) -> None:
+        status = data.get("status")
+        schandlerid = data.get("schandlerid")
+        if schandlerid:
+            self.schandlerid = int(schandlerid)
+        if status in {"0", "disconnected"}:
+            self.connection.auth_ok = False
+            self.clear_clients()
+            self.server_channel_id = None
+            self.server_channel_name = None
+            return
+        if self.connection:
+            asyncio.create_task(self.connection.reauthenticate())
+
+    def _server_connection_changed(self, data: Dict[str, str]) -> None:
+        schandlerid = data.get("schandlerid")
+        if schandlerid:
+            self.schandlerid = int(schandlerid)
+        if self.connection:
+            asyncio.create_task(self.connection.on_server_change())
 
     def _talk_status(self, data: Dict[str, str]) -> None:
         clid = data.get("clid")
