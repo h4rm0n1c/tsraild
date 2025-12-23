@@ -56,14 +56,6 @@ function ensureFrameAssets(wrapper, assets) {
   const frame = wrapper.querySelector('.tsrail-frame') || document.createElement('div');
   frame.className = 'tsrail-frame';
 
-  let frameMask = frame.querySelector('.frame-mask');
-  if (!frameMask) {
-    frameMask = document.createElement('img');
-    frameMask.className = 'frame frame-mask';
-    frame.appendChild(frameMask);
-  }
-  frameMask.src = FALLBACK_FRAME_MASK;
-
   let frameIdle = frame.querySelector('.frame-idle');
   if (!frameIdle) {
     frameIdle = document.createElement('img');
@@ -85,6 +77,17 @@ function ensureFrameAssets(wrapper, assets) {
   if (!frame.parentElement) {
     wrapper.appendChild(frame);
   }
+}
+
+function ensureFrameMask(wrapper) {
+  let frameMask = wrapper.querySelector('.frame-mask');
+  if (!frameMask) {
+    frameMask = document.createElement('img');
+    frameMask.className = 'frame-mask';
+    wrapper.appendChild(frameMask);
+  }
+  frameMask.src = FALLBACK_FRAME_MASK;
+  applyFrameFallback(frameMask, FALLBACK_FRAME_MASK);
 }
 
 function ensureAvatarAssets(wrapper, assets) {
@@ -148,6 +151,7 @@ function buildOrUpdateUser(user) {
 
   wrapper.classList.add('tsrail-user');
   applyTalkingState(wrapper, !!user.talking);
+  ensureFrameMask(wrapper);
   ensureFrameAssets(wrapper, user.assets || {});
   ensureAvatarAssets(wrapper, user.assets || {});
   ensureNickname(wrapper, user.nickname);
