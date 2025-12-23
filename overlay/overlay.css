@@ -102,7 +102,7 @@ body {
 }
 
 .tsrail-user.talking .tsrail-avatar {
-  animation: avatar-hop-in 0.45s ease-out;
+  animation: avatar-hop-in 0.45s ease-out 0.06s;
   filter: brightness(1.1);
   box-shadow:
     inset 0 0 18px rgba(0, 255, 255, 0.95),
@@ -164,12 +164,12 @@ body {
 
 .tsrail-user.talking .avatar-talk {
   opacity: 1;
-  transition-delay: 0s;
+  transition-delay: 0.06s;
 }
 
 .tsrail-user.talking .avatar-idle {
   opacity: 0;
-  transition-delay: 0.05s;
+  transition-delay: 0.06s;
 }
 
 .tsrail-user.idle .avatar-idle {
