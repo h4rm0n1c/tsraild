@@ -132,6 +132,7 @@ class ClientQueryConnection:
         self.link_ok = False
         self.auth_ok = False
         self.reader_task: Optional[asyncio.Task] = None
+        self.refresh_task: Optional[asyncio.Task] = None
 
     async def run(self) -> None:
         while self.running:
@@ -140,6 +141,7 @@ class ClientQueryConnection:
                 self.link_ok = True
                 self.reader_task = asyncio.create_task(self._reader_loop())
                 await self._post_connect()
+                self.refresh_task = asyncio.create_task(self._refresh_loop())
                 await self.reader_task
             except (ConnectionError, OSError):
                 self.link_ok = False
@@ -147,6 +149,10 @@ class ClientQueryConnection:
                 self.state.clear_clients()
                 await asyncio.sleep(2.0)
             finally:
+                if self.refresh_task:
+                    self.refresh_task.cancel()
+                    await asyncio.gather(self.refresh_task, return_exceptions=True)
+                    self.refresh_task = None
                 if self.writer:
                     self.writer.close()
                     await self.writer.wait_closed()
@@ -173,6 +179,18 @@ class ClientQueryConnection:
         await self._refresh_channels()
         await self._refresh_channel_name()
         await self._refresh_clients()
+
+    async def _refresh_loop(self) -> None:
+        while self.running:
+            await asyncio.sleep(5.0)
+            if not self.auth_ok:
+                continue
+            try:
+                await self.sync_state()
+            except (ConnectionError, OSError, asyncio.CancelledError):
+                raise
+            except Exception:
+                continue
 
     async def stop(self) -> None:
         self.running = False
