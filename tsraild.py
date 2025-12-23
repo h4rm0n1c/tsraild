@@ -526,9 +526,12 @@ class TSRailState:
             self.reset_server_state()
             return
         if status == "connected":
-            self.reset_server_state()
             if self.connection:
-                asyncio.create_task(self.connection.reauthenticate())
+                if self.connection.auth_ok:
+                    asyncio.create_task(self.connection.on_server_change())
+                else:
+                    self.reset_server_state()
+                    asyncio.create_task(self.connection.reauthenticate())
             return
         if self.connection:
             asyncio.create_task(self.connection.on_server_change())
@@ -606,6 +609,8 @@ class TSRailState:
         present_unknown = 0
         present_ignored = 0
         for client in self.clients.values():
+            if self.own_clid and client.clid == self.own_clid:
+                continue
             if client.uid and self.own_uid and client.uid == self.own_uid:
                 continue
             if target_channel and client.channel_id != target_channel:
@@ -629,6 +634,8 @@ class TSRailState:
             return []
         users: List[Client] = []
         for client in self.clients.values():
+            if self.own_clid and client.clid == self.own_clid:
+                continue
             if client.uid and self.own_uid and client.uid == self.own_uid:
                 continue
             if target_channel and client.channel_id != target_channel:
@@ -660,6 +667,8 @@ class TSRailState:
             return []
         unknowns: List[Client] = []
         for client in self.clients.values():
+            if self.own_clid and client.clid == self.own_clid:
+                continue
             if client.uid and self.own_uid and client.uid == self.own_uid:
                 continue
             if target_channel and client.channel_id != target_channel:
