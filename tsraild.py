@@ -165,6 +165,7 @@ class ClientQueryConnection:
         self.auth_ok = True
         await self._select_schandler()
         await self.send_command(f"clientnotifyregister schandlerid={self.state.schandlerid or 1} event=any")
+        await self.send_command("servernotifyregister event=any")
         await self.sync_state()
 
     async def sync_state(self) -> None:
@@ -194,6 +195,7 @@ class ClientQueryConnection:
             return
         await self._select_schandler()
         await self.send_command(f"clientnotifyregister schandlerid={self.state.schandlerid or 1} event=any")
+        await self.send_command("servernotifyregister event=any")
         await self.sync_state()
 
     async def send_command(self, cmd: str) -> List[str]:
@@ -220,6 +222,10 @@ class ClientQueryConnection:
                 continue
             if line.startswith("notify"):
                 self.state.handle_notification(line)
+            elif line.startswith("error id=1796"):
+                if self.writer:
+                    self.writer.write(b"\n")
+                    await self.writer.drain()
             elif self.pending is not None:
                 self.pending_buffer.append(line)
                 if line.startswith("error "):
