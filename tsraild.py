@@ -840,6 +840,14 @@ class ControlSocket:
             return "ok\n"
         if cmd == "dump-state":
             return json.dumps(self.state.state_json(), indent=2) + "\n"
+        if cmd == "whoami":
+            resp = await self.conn.send_command("whoami")
+            return "\n".join(resp) + "\n"
+        if cmd == "clientlist":
+            suffix = " ".join(args)
+            cmdline = f"clientlist {suffix}".strip()
+            resp = await self.conn.send_command(cmdline)
+            return "\n".join(resp) + "\n"
         if cmd == "approve-uid" and args:
             self.state.approve_uid(args[0])
             return "ok\n"
