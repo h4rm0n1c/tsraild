@@ -143,6 +143,7 @@ class ClientQueryConnection:
                 await self._post_connect()
                 self.refresh_task = asyncio.create_task(self._refresh_loop())
                 await self.reader_task
+                raise ConnectionError("ClientQuery connection closed")
             except (ConnectionError, OSError):
                 self.link_ok = False
                 self.auth_ok = False
@@ -240,31 +241,35 @@ class ClientQueryConnection:
 
     async def _reader_loop(self) -> None:
         assert self.reader
-        while not self.reader.at_eof():
-            raw = await self.reader.readline()
-            if not raw:
-                break
-            line = raw.decode("utf-8", "ignore").strip()
-            if not line:
-                continue
-            if line.startswith("notify"):
-                self.state.handle_notification(line)
-            elif line.startswith("error id=1796"):
-                if self.writer:
-                    self.writer.write(b"\n")
-                    await self.writer.drain()
-                if self.pending is not None:
+        try:
+            while not self.reader.at_eof():
+                raw = await self.reader.readline()
+                if not raw:
+                    break
+                line = raw.decode("utf-8", "ignore").strip()
+                if not line:
+                    continue
+                if line.startswith("notify"):
+                    self.state.handle_notification(line)
+                elif line.startswith("error id=1796"):
+                    if self.writer:
+                        self.writer.write(b"\n")
+                        await self.writer.drain()
+                    if self.pending is not None:
+                        self.pending_buffer.append(line)
+                        if not self.pending.done():
+                            self.pending.set_result(list(self.pending_buffer))
+                elif self.pending is not None:
                     self.pending_buffer.append(line)
-                    if not self.pending.done():
-                        self.pending.set_result(list(self.pending_buffer))
-            elif self.pending is not None:
-                self.pending_buffer.append(line)
-                if line.startswith("error "):
-                    if not self.pending.done():
-                        self.pending.set_result(list(self.pending_buffer))
-            else:
-                # Unsolicited non-notify; ignore.
-                pass
+                    if line.startswith("error "):
+                        if not self.pending.done():
+                            self.pending.set_result(list(self.pending_buffer))
+                else:
+                    # Unsolicited non-notify; ignore.
+                    pass
+        finally:
+            if self.pending is not None and not self.pending.done():
+                self.pending.set_result(["error id=2569 msg=not\\sconnected"])
 
     @staticmethod
     def _is_ok(lines: List[str]) -> bool:
