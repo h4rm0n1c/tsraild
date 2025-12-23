@@ -18,10 +18,10 @@ ALLOWED_AVATAR_EXTS = (".svg", ".png", ".apng", ".gif", ".webp", ".avif")
 SOCKET_PATH = pathlib.Path(os.environ.get("XDG_RUNTIME_DIR", f"/run/user/{os.getuid()}")) / "tsrail.sock"
 KEY_FILE = CONFIG_DIR / "clientquery.key"
 CONFIG_FILE = CONFIG_DIR / "config.json"
-HTTP_HOST = "127.0.0.1"
-HTTP_PORT = 17891
-CLIENTQUERY_HOST = "127.0.0.1"
-CLIENTQUERY_PORT = 25639
+DEFAULT_HTTP_HOST = "127.0.0.1"
+DEFAULT_HTTP_PORT = 17891
+DEFAULT_CLIENTQUERY_HOST = "127.0.0.1"
+DEFAULT_CLIENTQUERY_PORT = 25639
 
 
 def ensure_dirs():
@@ -98,16 +98,41 @@ class PersistentConfig:
         self.approved_uids: Set[str] = set()
         self.ignore_uids: Set[str] = set()
         self.policies = Policies()
+        self.http_host = DEFAULT_HTTP_HOST
+        self.http_port = DEFAULT_HTTP_PORT
+        self.clientquery_host = DEFAULT_CLIENTQUERY_HOST
+        self.clientquery_port = DEFAULT_CLIENTQUERY_PORT
         self.load()
 
     def load(self) -> None:
         ensure_dirs()
+        dirty = False
         if CONFIG_FILE.exists():
             with CONFIG_FILE.open("r", encoding="utf-8") as f:
                 data = json.load(f)
             self.approved_uids = set(data.get("approved", []))
             self.ignore_uids = set(data.get("ignored", []))
             self.policies = Policies.from_dict(data.get("policies", {}))
+            http = data.get("http", {})
+            clientquery = data.get("clientquery", {})
+            if http:
+                if "host" not in http or "port" not in http:
+                    dirty = True
+                self.http_host = http.get("host", self.http_host)
+                self.http_port = int(http.get("port", self.http_port))
+            else:
+                dirty = True
+            if clientquery:
+                if "host" not in clientquery or "port" not in clientquery:
+                    dirty = True
+                self.clientquery_host = clientquery.get("host", self.clientquery_host)
+                self.clientquery_port = int(clientquery.get("port", self.clientquery_port))
+            else:
+                dirty = True
+        else:
+            dirty = True
+        if dirty:
+            self.save()
 
     def save(self) -> None:
         ensure_dirs()
@@ -115,14 +140,20 @@ class PersistentConfig:
             "approved": sorted(self.approved_uids),
             "ignored": sorted(self.ignore_uids),
             "policies": self.policies.to_dict(),
+            "http": {"host": self.http_host, "port": self.http_port},
+            "clientquery": {
+                "host": self.clientquery_host,
+                "port": self.clientquery_port,
+            },
         }
         with CONFIG_FILE.open("w", encoding="utf-8") as f:
             json.dump(data, f, indent=2)
 
 
 class ClientQueryConnection:
-    def __init__(self, state: "TSRailState") -> None:
+    def __init__(self, state: "TSRailState", config: PersistentConfig) -> None:
         self.state = state
+        self.config = config
         self.reader: Optional[asyncio.StreamReader] = None
         self.writer: Optional[asyncio.StreamWriter] = None
         self.pending: Optional[asyncio.Future] = None
@@ -137,7 +168,10 @@ class ClientQueryConnection:
     async def run(self) -> None:
         while self.running:
             try:
-                self.reader, self.writer = await asyncio.open_connection(CLIENTQUERY_HOST, CLIENTQUERY_PORT)
+                self.reader, self.writer = await asyncio.open_connection(
+                    self.config.clientquery_host,
+                    self.config.clientquery_port,
+                )
                 self.link_ok = True
                 self.reader_task = asyncio.create_task(self._reader_loop())
                 await self._post_connect()
@@ -807,9 +841,10 @@ def parse_multi_kv(line: str) -> List[Dict[str, str]]:
 
 
 class ControlSocket:
-    def __init__(self, state: TSRailState, conn: ClientQueryConnection) -> None:
+    def __init__(self, state: TSRailState, conn: ClientQueryConnection, config: PersistentConfig) -> None:
         self.state = state
         self.conn = conn
+        self.config = config
         self.server: Optional[asyncio.AbstractServer] = None
 
     async def start(self) -> None:
@@ -847,7 +882,7 @@ class ControlSocket:
             return (
                 f"ok link_ok={link_ok} auth={auth} schandlerid={self.state.schandlerid} "
                 f"channel_id={channel_id} channel_name={channel_name} counts={counts} "
-                f"url=http://{HTTP_HOST}:{HTTP_PORT}/state.json\n"
+                f"url=http://{self.config.http_host}:{self.config.http_port}/state.json\n"
             )
         if cmd == "key-status":
             exists = int(KEY_FILE.exists())
@@ -950,12 +985,17 @@ class ControlSocket:
 
 
 class HttpServer:
-    def __init__(self, state: TSRailState):
+    def __init__(self, state: TSRailState, config: PersistentConfig):
         self.state = state
+        self.config = config
         self.server: Optional[asyncio.AbstractServer] = None
 
     async def start(self) -> None:
-        self.server = await asyncio.start_server(self.handle_client, HTTP_HOST, HTTP_PORT)
+        self.server = await asyncio.start_server(
+            self.handle_client,
+            self.config.http_host,
+            self.config.http_port,
+        )
 
     async def handle_client(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
         request_line = await reader.readline()
@@ -1042,10 +1082,10 @@ async def main() -> None:
     ensure_dirs()
     config = PersistentConfig()
     state = TSRailState(config)
-    conn = ClientQueryConnection(state)
+    conn = ClientQueryConnection(state, config)
     state.attach_connection(conn)
-    http = HttpServer(state)
-    control = ControlSocket(state, conn)
+    http = HttpServer(state, config)
+    control = ControlSocket(state, conn, config)
 
     loop = asyncio.get_running_loop()
     stop_event = asyncio.Event()
