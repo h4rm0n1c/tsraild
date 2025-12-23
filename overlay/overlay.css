@@ -195,6 +195,12 @@ body {
   will-change: auto;
 }
 
+.tsrail-user .frame-mask {
+  opacity: 1;
+  transition: none;
+  will-change: auto;
+}
+
 .tsrail-user .frame-talk {
   opacity: 0;
   transition: none;
@@ -202,6 +208,14 @@ body {
 }
 
 .tsrail-user.talking .frame-talk {
+  opacity: 1;
+}
+
+.tsrail-user.talking .frame-idle {
+  opacity: 0;
+}
+
+.tsrail-user.idle .frame-idle {
   opacity: 1;
 }
 
