@@ -188,7 +188,7 @@ class ClientQueryConnection:
         resp = await self.send_command(f"auth apikey={key}")
         if self._is_ok(resp):
             self.auth_ok = True
-            await self.sync_state()
+            await self.on_server_change()
 
     async def on_server_change(self) -> None:
         if not self.auth_ok:
@@ -489,9 +489,13 @@ class TSRailState:
         if schandlerid:
             self.schandlerid = int(schandlerid)
         if status in {"0", "disconnected"}:
+            self.connection.auth_ok = False
+            self.clear_clients()
+            self.server_channel_id = None
+            self.server_channel_name = None
             return
         if self.connection:
-            asyncio.create_task(self.connection.on_server_change())
+            asyncio.create_task(self.connection.reauthenticate())
 
     def _server_connection_changed(self, data: Dict[str, str]) -> None:
         schandlerid = data.get("schandlerid")
