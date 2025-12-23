@@ -18,10 +18,10 @@ ALLOWED_AVATAR_EXTS = (".svg", ".png", ".apng", ".gif", ".webp", ".avif")
 SOCKET_PATH = pathlib.Path(os.environ.get("XDG_RUNTIME_DIR", f"/run/user/{os.getuid()}")) / "tsrail.sock"
 KEY_FILE = CONFIG_DIR / "clientquery.key"
 CONFIG_FILE = CONFIG_DIR / "config.json"
-DEFAULT_HTTP_HOST = "127.0.0.1"
-DEFAULT_HTTP_PORT = 17891
-DEFAULT_CLIENTQUERY_HOST = "127.0.0.1"
-DEFAULT_CLIENTQUERY_PORT = 25639
+DEFAULT_HTTP_HOST = "127.0.0.1"  # You do not have to set these here, you can set them in config.json
+DEFAULT_HTTP_PORT = 17891  # You do not have to set these here, you can set them in config.json
+DEFAULT_CLIENTQUERY_HOST = "127.0.0.1"  # You do not have to set these here, you can set them in config.json
+DEFAULT_CLIENTQUERY_PORT = 25639  # You do not have to set these here, you can set them in config.json
 
 
 def ensure_dirs():
