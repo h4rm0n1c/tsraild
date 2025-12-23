@@ -374,6 +374,16 @@ class TSRailState:
     def clear_clients(self) -> None:
         self.clients.clear()
 
+    def reset_server_state(self) -> None:
+        self.clear_clients()
+        self.server_channel_id = None
+        self.server_channel_name = None
+        self.channel_names.clear()
+        self.own_clid = None
+        self.own_uid = None
+        self.own_nickname = None
+        self.schandlerid = None
+
     def handle_notification(self, line: str) -> None:
         data = parse_kv(line)
         event = line.split(" ", 1)[0]
@@ -506,14 +516,11 @@ class TSRailState:
         schandlerid = data.get("schandlerid")
         if schandlerid:
             self.schandlerid = int(schandlerid)
-        if status in {"0", "disconnected"}:
-            self.connection.auth_ok = False
-            self.clear_clients()
-            self.server_channel_id = None
-            self.server_channel_name = None
+        if status in {"0", "disconnected", "connecting"}:
+            self.reset_server_state()
             return
         if self.connection:
-            asyncio.create_task(self.connection.reauthenticate())
+            asyncio.create_task(self.connection.on_server_change())
 
     def _server_connection_changed(self, data: Dict[str, str]) -> None:
         schandlerid = data.get("schandlerid")
