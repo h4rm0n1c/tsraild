@@ -78,9 +78,19 @@ body {
 }
 
 
+.frame-mask,
 .tsrail-frame,
 .tsrail-avatar {
   position: absolute;
+}
+
+.frame-mask {
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 1;
+  transition: none;
+  will-change: auto;
 }
 
 .tsrail-avatar {
@@ -137,7 +147,8 @@ body {
 }
 
 .tsrail-frame img,
-.tsrail-avatar img {
+.tsrail-avatar img,
+.frame-mask {
   position: absolute;
   inset: 0;
   width: 100%;
@@ -145,7 +156,6 @@ body {
   object-fit: contain;
   transform: translateZ(0);
   backface-visibility: hidden;
-  z-index: 1;
 }
 
 .tsrail-user .avatar-underlay {
@@ -202,6 +212,14 @@ body {
 }
 
 .tsrail-user.talking .frame-talk {
+  opacity: 1;
+}
+
+.tsrail-user.talking .frame-idle {
+  opacity: 0;
+}
+
+.tsrail-user.idle .frame-idle {
   opacity: 1;
 }
 

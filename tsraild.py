@@ -146,7 +146,7 @@ class ClientQueryConnection:
             except (ConnectionError, OSError):
                 self.link_ok = False
                 self.auth_ok = False
-                self.state.clear_clients()
+                self.state.reset_server_state()
                 await asyncio.sleep(2.0)
             finally:
                 if self.refresh_task:
@@ -197,6 +197,15 @@ class ClientQueryConnection:
         if self.reader_task:
             self.reader_task.cancel()
 
+    async def force_reconnect(self) -> None:
+        if self.writer:
+            self.writer.close()
+            await self.writer.wait_closed()
+        if self.reader_task:
+            self.reader_task.cancel()
+            await asyncio.gather(self.reader_task, return_exceptions=True)
+            self.reader_task = None
+
     async def reauthenticate(self) -> None:
         if not self.writer:
             return
@@ -244,6 +253,10 @@ class ClientQueryConnection:
                 if self.writer:
                     self.writer.write(b"\n")
                     await self.writer.drain()
+                if self.pending is not None:
+                    self.pending_buffer.append(line)
+                    if not self.pending.done():
+                        self.pending.set_result(list(self.pending_buffer))
             elif self.pending is not None:
                 self.pending_buffer.append(line)
                 if line.startswith("error "):
@@ -260,6 +273,9 @@ class ClientQueryConnection:
     async def _refresh_identity(self) -> None:
         resp = await self.send_command("whoami")
         self._update_identity(resp)
+        if self.state.own_clid and (self.state.own_uid is None or self.state.own_nickname is None):
+            resp = await self.send_command(f"clientinfo clid={self.state.own_clid}")
+            self._update_identity(resp)
 
     async def _select_schandler(self) -> int:
         resp = await self.send_command("whoami")
@@ -270,14 +286,19 @@ class ClientQueryConnection:
     def _update_identity(self, resp: List[str]) -> int:
         schandlerid = self.state.schandlerid or 1
         for line in resp:
-            if line.startswith("clid"):
-                data = parse_kv(line)
-                if data.get("schandlerid"):
-                    schandlerid = int(data["schandlerid"])
-                if data.get("cid"):
-                    self.state.server_channel_id = int(data["cid"])
-                if data.get("clid"):
-                    self.state.own_clid = data["clid"]
+            if not line or line.startswith("error "):
+                continue
+            data = parse_kv(line)
+            if data.get("schandlerid"):
+                schandlerid = int(data["schandlerid"])
+            if data.get("cid"):
+                self.state.server_channel_id = int(data["cid"])
+            if data.get("clid"):
+                self.state.own_clid = data["clid"]
+            if data.get("client_unique_identifier"):
+                self.state.own_uid = data["client_unique_identifier"]
+            if data.get("client_nickname"):
+                self.state.own_nickname = decode_ts(data["client_nickname"])
         self.state.schandlerid = schandlerid
         return schandlerid
 
@@ -373,6 +394,16 @@ class TSRailState:
 
     def clear_clients(self) -> None:
         self.clients.clear()
+
+    def reset_server_state(self) -> None:
+        self.clear_clients()
+        self.server_channel_id = None
+        self.server_channel_name = None
+        self.channel_names.clear()
+        self.own_clid = None
+        self.own_uid = None
+        self.own_nickname = None
+        self.schandlerid = None
 
     def handle_notification(self, line: str) -> None:
         data = parse_kv(line)
@@ -506,14 +537,22 @@ class TSRailState:
         schandlerid = data.get("schandlerid")
         if schandlerid:
             self.schandlerid = int(schandlerid)
-        if status in {"0", "disconnected"}:
-            self.connection.auth_ok = False
-            self.clear_clients()
-            self.server_channel_id = None
-            self.server_channel_name = None
+        if status in {"0", "disconnected", "connecting"}:
+            if self.connection:
+                self.connection.auth_ok = False
+                asyncio.create_task(self.connection.force_reconnect())
+            self.reset_server_state()
+            return
+        if status == "connected":
+            if self.connection:
+                if self.connection.auth_ok:
+                    asyncio.create_task(self.connection.on_server_change())
+                else:
+                    self.reset_server_state()
+                    asyncio.create_task(self.connection.reauthenticate())
             return
         if self.connection:
-            asyncio.create_task(self.connection.reauthenticate())
+            asyncio.create_task(self.connection.on_server_change())
 
     def _server_connection_changed(self, data: Dict[str, str]) -> None:
         schandlerid = data.get("schandlerid")
@@ -588,6 +627,8 @@ class TSRailState:
         present_unknown = 0
         present_ignored = 0
         for client in self.clients.values():
+            if self.own_clid and client.clid == self.own_clid:
+                continue
             if client.uid and self.own_uid and client.uid == self.own_uid:
                 continue
             if target_channel and client.channel_id != target_channel:
@@ -611,6 +652,8 @@ class TSRailState:
             return []
         users: List[Client] = []
         for client in self.clients.values():
+            if self.own_clid and client.clid == self.own_clid:
+                continue
             if client.uid and self.own_uid and client.uid == self.own_uid:
                 continue
             if target_channel and client.channel_id != target_channel:
@@ -642,6 +685,8 @@ class TSRailState:
             return []
         unknowns: List[Client] = []
         for client in self.clients.values():
+            if self.own_clid and client.clid == self.own_clid:
+                continue
             if client.uid and self.own_uid and client.uid == self.own_uid:
                 continue
             if target_channel and client.channel_id != target_channel:
@@ -809,6 +854,14 @@ class ControlSocket:
             return "ok\n"
         if cmd == "dump-state":
             return json.dumps(self.state.state_json(), indent=2) + "\n"
+        if cmd == "whoami":
+            resp = await self.conn.send_command("whoami")
+            return "\n".join(resp) + "\n"
+        if cmd == "clientlist":
+            suffix = " ".join(args)
+            cmdline = f"clientlist {suffix}".strip()
+            resp = await self.conn.send_command(cmdline)
+            return "\n".join(resp) + "\n"
         if cmd == "approve-uid" and args:
             self.state.approve_uid(args[0])
             return "ok\n"
