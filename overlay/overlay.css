@@ -155,12 +155,6 @@ body {
   will-change: auto;
 }
 
-.tsrail-user.talking .avatar-underlay,
-.tsrail-user.idle .avatar-underlay {
-  opacity: 1;
-  transition: none;
-}
-
 .tsrail-user .avatar-idle {
   opacity: 1;
   transition: opacity 0.2s ease;
