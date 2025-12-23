@@ -244,6 +244,10 @@ class ClientQueryConnection:
                 if self.writer:
                     self.writer.write(b"\n")
                     await self.writer.drain()
+                if self.pending is not None:
+                    self.pending_buffer.append(line)
+                    if not self.pending.done():
+                        self.pending.set_result(list(self.pending_buffer))
             elif self.pending is not None:
                 self.pending_buffer.append(line)
                 if line.startswith("error "):
