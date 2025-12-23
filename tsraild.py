@@ -146,7 +146,7 @@ class ClientQueryConnection:
             except (ConnectionError, OSError):
                 self.link_ok = False
                 self.auth_ok = False
-                self.state.clear_clients()
+                self.state.reset_server_state()
                 await asyncio.sleep(2.0)
             finally:
                 if self.refresh_task:
@@ -516,9 +516,10 @@ class TSRailState:
         schandlerid = data.get("schandlerid")
         if schandlerid:
             self.schandlerid = int(schandlerid)
-        if status in {"0", "disconnected", "connecting"}:
+        if status in {"0", "disconnected", "connecting", "connected"}:
             self.reset_server_state()
-            return
+            if status in {"0", "disconnected", "connecting"}:
+                return
         if self.connection:
             asyncio.create_task(self.connection.on_server_change())
 
