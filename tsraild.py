@@ -278,6 +278,10 @@ class ClientQueryConnection:
                     self.state.server_channel_id = int(data["cid"])
                 if data.get("clid"):
                     self.state.own_clid = data["clid"]
+                if data.get("client_unique_identifier"):
+                    self.state.own_uid = data["client_unique_identifier"]
+                if data.get("client_nickname"):
+                    self.state.own_nickname = decode_ts(data["client_nickname"])
         self.state.schandlerid = schandlerid
         return schandlerid
 
