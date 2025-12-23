@@ -197,6 +197,15 @@ class ClientQueryConnection:
         if self.reader_task:
             self.reader_task.cancel()
 
+    async def force_reconnect(self) -> None:
+        if self.writer:
+            self.writer.close()
+            await self.writer.wait_closed()
+        if self.reader_task:
+            self.reader_task.cancel()
+            await asyncio.gather(self.reader_task, return_exceptions=True)
+            self.reader_task = None
+
     async def reauthenticate(self) -> None:
         if not self.writer:
             return
@@ -531,6 +540,7 @@ class TSRailState:
         if status in {"0", "disconnected", "connecting"}:
             if self.connection:
                 self.connection.auth_ok = False
+                asyncio.create_task(self.connection.force_reconnect())
             self.reset_server_state()
             return
         if status == "connected":
