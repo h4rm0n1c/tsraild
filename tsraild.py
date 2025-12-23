@@ -189,6 +189,13 @@ class ClientQueryConnection:
             self.auth_ok = True
             await self.sync_state()
 
+    async def on_server_change(self) -> None:
+        if not self.auth_ok:
+            return
+        await self._select_schandler()
+        await self.send_command(f"clientnotifyregister schandlerid={self.state.schandlerid or 1} event=any")
+        await self.sync_state()
+
     async def send_command(self, cmd: str) -> List[str]:
         if not self.writer or not self.reader:
             return ["error id=2569 msg=not\\sconnected"]
@@ -356,6 +363,10 @@ class TSRailState:
             self._talk_status(data)
         elif event.startswith("notifyclientupdated"):
             self._client_updated(data)
+        elif event.startswith("notifyconnectstatuschange"):
+            self._connect_status_changed(data)
+        elif event.startswith("notifycurrentserverconnectionchanged"):
+            self._server_connection_changed(data)
         self.last_ts = time.time()
 
     def monitor_channel_id(self) -> Optional[int]:
@@ -465,6 +476,23 @@ class TSRailState:
             return
         if "client_nickname" in data:
             self.clients[clid].nickname = decode_ts(data["client_nickname"])
+
+    def _connect_status_changed(self, data: Dict[str, str]) -> None:
+        status = data.get("status")
+        schandlerid = data.get("schandlerid")
+        if schandlerid:
+            self.schandlerid = int(schandlerid)
+        if status in {"0", "disconnected"}:
+            return
+        if self.connection:
+            asyncio.create_task(self.connection.on_server_change())
+
+    def _server_connection_changed(self, data: Dict[str, str]) -> None:
+        schandlerid = data.get("schandlerid")
+        if schandlerid:
+            self.schandlerid = int(schandlerid)
+        if self.connection:
+            asyncio.create_task(self.connection.on_server_change())
 
     def _talk_status(self, data: Dict[str, str]) -> None:
         clid = data.get("clid")
