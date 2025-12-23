@@ -516,10 +516,16 @@ class TSRailState:
         schandlerid = data.get("schandlerid")
         if schandlerid:
             self.schandlerid = int(schandlerid)
-        if status in {"0", "disconnected", "connecting", "connected"}:
+        if status in {"0", "disconnected", "connecting"}:
+            if self.connection:
+                self.connection.auth_ok = False
             self.reset_server_state()
-            if status in {"0", "disconnected", "connecting"}:
-                return
+            return
+        if status == "connected":
+            self.reset_server_state()
+            if self.connection:
+                asyncio.create_task(self.connection.reauthenticate())
+            return
         if self.connection:
             asyncio.create_task(self.connection.on_server_change())
 
