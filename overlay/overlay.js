@@ -31,6 +31,7 @@ function assetUrl(path) {
 
 const FALLBACK_FRAME_IDLE = assetUrl('assets/frames/tv_idle.png');
 const FALLBACK_FRAME_TALK = assetUrl('assets/frames/tv_talk.png');
+const FRAME_MASK = assetUrl('assets/frames/tv_mask.png');
 
 function applyFrameFallback(img, fallbackSrc) {
   if (!img) return;
@@ -54,6 +55,14 @@ function applyTalkingState(userEl, talking) {
 function ensureFrameAssets(wrapper, assets) {
   const frame = wrapper.querySelector('.tsrail-frame') || document.createElement('div');
   frame.className = 'tsrail-frame';
+
+  let frameMask = frame.querySelector('.frame-mask');
+  if (!frameMask) {
+    frameMask = document.createElement('img');
+    frameMask.className = 'frame frame-mask';
+    frame.insertBefore(frameMask, frame.firstChild || null);
+  }
+  frameMask.src = assetUrl(assets.frame_mask) || FRAME_MASK;
 
   let frameIdle = frame.querySelector('.frame-idle');
   if (!frameIdle) {

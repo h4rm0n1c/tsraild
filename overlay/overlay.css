@@ -143,6 +143,12 @@ body {
   backface-visibility: hidden;
 }
 
+.tsrail-user .frame-mask {
+  opacity: 1;
+  transition: none;
+  z-index: 0;
+}
+
 .tsrail-user .avatar-underlay {
   opacity: 1;
   z-index: 0;
