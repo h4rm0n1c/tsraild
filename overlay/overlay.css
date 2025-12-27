@@ -161,8 +161,9 @@ body {
 .tsrail-user .avatar-underlay {
   opacity: 1;
   z-index: 0;
-  transition: none;
-  will-change: auto;
+  transition: opacity 0.2s ease;
+  transition-delay: 0s;
+  will-change: opacity;
 }
 
 .tsrail-user .avatar-idle {
@@ -177,6 +178,11 @@ body {
   transition: opacity 0.2s ease;
   transition-delay: 0s;
   will-change: opacity;
+}
+
+.tsrail-user.talking .avatar-underlay {
+  opacity: 0;
+  transition-delay: 0.08s;
 }
 
 .tsrail-user.talking .avatar-talk {
@@ -197,6 +203,11 @@ body {
 .tsrail-user.idle .avatar-talk {
   opacity: 0;
   transition-delay: 0.05s;
+}
+
+.tsrail-user.idle .avatar-underlay {
+  opacity: 1;
+  transition-delay: 0s;
 }
 
 .tsrail-user .frame-idle {
@@ -227,6 +238,7 @@ body {
 }
 
 .tsrail-user.idle .frame-talk {
+  opacity: 0;
   transition-delay: 0.05s;
 }
 
