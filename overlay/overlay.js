@@ -31,7 +31,7 @@ function assetUrl(path) {
 
 const FALLBACK_FRAME_IDLE = assetUrl('assets/frames/tv_idle.png');
 const FALLBACK_FRAME_TALK = assetUrl('assets/frames/tv_talk.png');
-const FALLBACK_FRAME_MASK = assetUrl('assets/frames/tv_mask.png');
+const FRAME_MASK = assetUrl('assets/frames/tv_mask.png');
 
 function applyFrameFallback(img, fallbackSrc) {
   if (!img) return;
@@ -50,6 +50,26 @@ function applyTalkingState(userEl, talking) {
   void userEl.offsetHeight;
   userEl.classList.toggle('talking', talking);
   userEl.classList.toggle('idle', !talking);
+}
+
+function ensureMaskAsset(wrapper, assets) {
+  let maskWrapper = wrapper.querySelector('.tsrail-mask');
+  if (!maskWrapper) {
+    maskWrapper = document.createElement('div');
+    maskWrapper.className = 'tsrail-mask';
+  }
+
+  let frameMask = maskWrapper.querySelector('.frame-mask');
+  if (!frameMask) {
+    frameMask = document.createElement('img');
+    frameMask.className = 'frame-mask';
+    maskWrapper.appendChild(frameMask);
+  }
+  frameMask.src = assetUrl(assets.frame_mask) || FRAME_MASK;
+
+  if (!maskWrapper.parentElement || maskWrapper !== wrapper.firstElementChild) {
+    wrapper.insertBefore(maskWrapper, wrapper.firstChild);
+  }
 }
 
 function ensureFrameAssets(wrapper, assets) {
@@ -77,17 +97,6 @@ function ensureFrameAssets(wrapper, assets) {
   if (!frame.parentElement) {
     wrapper.appendChild(frame);
   }
-}
-
-function ensureFrameMask(wrapper) {
-  let frameMask = wrapper.querySelector('.frame-mask');
-  if (!frameMask) {
-    frameMask = document.createElement('img');
-    frameMask.className = 'frame-mask';
-    wrapper.appendChild(frameMask);
-  }
-  frameMask.src = FALLBACK_FRAME_MASK;
-  applyFrameFallback(frameMask, FALLBACK_FRAME_MASK);
 }
 
 function ensureAvatarAssets(wrapper, assets) {
@@ -151,7 +160,7 @@ function buildOrUpdateUser(user) {
 
   wrapper.classList.add('tsrail-user');
   applyTalkingState(wrapper, !!user.talking);
-  ensureFrameMask(wrapper);
+  ensureMaskAsset(wrapper, user.assets || {});
   ensureFrameAssets(wrapper, user.assets || {});
   ensureAvatarAssets(wrapper, user.assets || {});
   ensureNickname(wrapper, user.nickname);

@@ -78,19 +78,17 @@ body {
 }
 
 
-.frame-mask,
 .tsrail-frame,
-.tsrail-avatar {
+.tsrail-avatar,
+.tsrail-mask {
   position: absolute;
 }
 
-.frame-mask {
+.tsrail-mask {
   inset: 0;
   z-index: 0;
   pointer-events: none;
-  opacity: 1;
   transition: none;
-  will-change: auto;
 }
 
 .tsrail-avatar {
@@ -113,11 +111,7 @@ body {
 
 .tsrail-user.talking .tsrail-avatar {
   animation: avatar-hop-in 0.45s ease-out 0.06s;
-  filter: brightness(1.1);
-  box-shadow:
-    inset 0 0 18px rgba(0, 255, 255, 0.95),
-    inset 0 0 36px rgba(0, 255, 255, 0.8),
-    inset 0 0 54px rgba(0, 255, 255, 0.6);
+  filter: brightness(1.35) contrast(1.12) saturate(1.08);
 }
 
 @keyframes avatar-hop-in {
@@ -146,9 +140,9 @@ body {
   pointer-events: none;
 }
 
+.tsrail-mask img,
 .tsrail-frame img,
-.tsrail-avatar img,
-.frame-mask {
+.tsrail-avatar img {
   position: absolute;
   inset: 0;
   width: 100%;
@@ -158,11 +152,17 @@ body {
   backface-visibility: hidden;
 }
 
+.tsrail-user .frame-mask {
+  opacity: 1;
+  transition: none;
+}
+
 .tsrail-user .avatar-underlay {
   opacity: 1;
   z-index: 0;
-  transition: none;
-  will-change: auto;
+  transition: opacity 0.2s ease;
+  transition-delay: 0s;
+  will-change: opacity;
 }
 
 .tsrail-user .avatar-idle {
@@ -179,14 +179,22 @@ body {
   will-change: opacity;
 }
 
+.tsrail-user.talking .avatar-underlay {
+  opacity: 0;
+  transition-delay: 0.08s;
+}
+
 .tsrail-user.talking .avatar-talk {
   opacity: 1;
-  transition-delay: 0.06s;
+  transition-delay: 0s;
+  filter:
+    drop-shadow(0 0 8px rgba(0, 255, 255, 0.65))
+    drop-shadow(0 0 16px rgba(0, 255, 255, 0.45));
 }
 
 .tsrail-user.talking .avatar-idle {
   opacity: 0;
-  transition-delay: 0.06s;
+  transition-delay: 0.08s;
 }
 
 .tsrail-user.idle .avatar-idle {
@@ -199,28 +207,41 @@ body {
   transition-delay: 0.05s;
 }
 
+.tsrail-user.idle .avatar-underlay {
+  opacity: 1;
+  transition-delay: 0s;
+}
+
 .tsrail-user .frame-idle {
   opacity: 1;
-  transition: none;
+  transition: opacity 0.12s ease;
   will-change: auto;
 }
 
 .tsrail-user .frame-talk {
   opacity: 0;
-  transition: none;
+  transition: opacity 0.12s ease;
   will-change: auto;
 }
 
 .tsrail-user.talking .frame-talk {
   opacity: 1;
+  transition-delay: 0s;
 }
 
 .tsrail-user.talking .frame-idle {
   opacity: 0;
+  transition-delay: 0.06s;
 }
 
 .tsrail-user.idle .frame-idle {
   opacity: 1;
+  transition-delay: 0s;
+}
+
+.tsrail-user.idle .frame-talk {
+  opacity: 0;
+  transition-delay: 0.05s;
 }
 
 .tsrail-user .tsrail-nickname {
