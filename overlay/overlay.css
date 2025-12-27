@@ -79,8 +79,16 @@ body {
 
 
 .tsrail-frame,
-.tsrail-avatar {
+.tsrail-avatar,
+.tsrail-mask {
   position: absolute;
+}
+
+.tsrail-mask {
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  transition: none;
 }
 
 .tsrail-avatar {
@@ -132,6 +140,7 @@ body {
   pointer-events: none;
 }
 
+.tsrail-mask img,
 .tsrail-frame img,
 .tsrail-avatar img {
   position: absolute;
@@ -146,7 +155,6 @@ body {
 .tsrail-user .frame-mask {
   opacity: 1;
   transition: none;
-  z-index: 0;
 }
 
 .tsrail-user .avatar-underlay {

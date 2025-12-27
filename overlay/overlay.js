@@ -52,17 +52,29 @@ function applyTalkingState(userEl, talking) {
   userEl.classList.toggle('idle', !talking);
 }
 
+function ensureMaskAsset(wrapper, assets) {
+  let maskWrapper = wrapper.querySelector('.tsrail-mask');
+  if (!maskWrapper) {
+    maskWrapper = document.createElement('div');
+    maskWrapper.className = 'tsrail-mask';
+  }
+
+  let frameMask = maskWrapper.querySelector('.frame-mask');
+  if (!frameMask) {
+    frameMask = document.createElement('img');
+    frameMask.className = 'frame-mask';
+    maskWrapper.appendChild(frameMask);
+  }
+  frameMask.src = assetUrl(assets.frame_mask) || FRAME_MASK;
+
+  if (!maskWrapper.parentElement || maskWrapper !== wrapper.firstElementChild) {
+    wrapper.insertBefore(maskWrapper, wrapper.firstChild);
+  }
+}
+
 function ensureFrameAssets(wrapper, assets) {
   const frame = wrapper.querySelector('.tsrail-frame') || document.createElement('div');
   frame.className = 'tsrail-frame';
-
-  let frameMask = frame.querySelector('.frame-mask');
-  if (!frameMask) {
-    frameMask = document.createElement('img');
-    frameMask.className = 'frame frame-mask';
-    frame.insertBefore(frameMask, frame.firstChild || null);
-  }
-  frameMask.src = assetUrl(assets.frame_mask) || FRAME_MASK;
 
   let frameIdle = frame.querySelector('.frame-idle');
   if (!frameIdle) {
@@ -148,6 +160,7 @@ function buildOrUpdateUser(user) {
 
   wrapper.classList.add('tsrail-user');
   applyTalkingState(wrapper, !!user.talking);
+  ensureMaskAsset(wrapper, user.assets || {});
   ensureFrameAssets(wrapper, user.assets || {});
   ensureAvatarAssets(wrapper, user.assets || {});
   ensureNickname(wrapper, user.nickname);
