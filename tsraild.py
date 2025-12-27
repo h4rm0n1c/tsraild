@@ -378,6 +378,8 @@ class ClientQueryConnection:
         resp = await self.send_command("clientlist -voice -uid")
         if not resp:
             return
+        previous_clients = self.state.clients
+        previous_by_uid = {client.uid: client for client in previous_clients.values() if client.uid}
         new_clients: Dict[str, Client] = {}
         for line in resp:
             if not line or line.startswith("error "):
@@ -395,6 +397,7 @@ class ClientQueryConnection:
                     self.state.own_nickname = nickname
                     self.state.server_channel_id = cid
                     continue
+                previous = previous_by_uid.get(uid) or previous_clients.get(clid)
                 client = Client(
                     clid=clid,
                     uid=uid,
@@ -402,6 +405,8 @@ class ClientQueryConnection:
                     channel_id=cid,
                     approved=uid in self.state.config.approved_uids,
                     ignored=uid in self.state.config.ignore_uids,
+                    talking=previous.talking if previous else False,
+                    muted_by_us=previous.muted_by_us if previous else False,
                 )
                 new_clients[clid] = client
         self.state.clients = new_clients
