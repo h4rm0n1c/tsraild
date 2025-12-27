@@ -103,7 +103,7 @@ body {
 
 .tsrail-user.talking .tsrail-avatar {
   animation: avatar-hop-in 0.45s ease-out 0.06s;
-  filter: brightness(1.2);
+  filter: brightness(1.35) contrast(1.12) saturate(1.08);
 }
 
 @keyframes avatar-hop-in {
