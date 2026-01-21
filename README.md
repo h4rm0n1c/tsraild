@@ -23,10 +23,10 @@ For protocol and overlay details, see [`DESIGN.md`](DESIGN.md) and [`OVERLAY.md`
 1. Clone the repo and run the daemon:
 
    ```bash
-   ./tsraild.py
+   scripts/tsrailctl service-start
    ```
 
-2. Set the ClientQuery API key (from the TeamSpeak client):
+2. Set the ClientQuery API key (retrieve that info from the TeamSpeak client):
 
    ```bash
    scripts/tsrailctl setkey YOUR_API_KEY
