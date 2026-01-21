@@ -2,6 +2,8 @@
 
 TS Rail is a small TeamSpeak activity rail daemon for stream overlays. It connects to the TeamSpeak ClientQuery interface, tracks who is present in a target channel, and exposes an HTTP endpoint (`/state.json`) plus a ready-made overlay at `/overlay/` that you can drop into OBS as a browser source.
 
+![TS Rail demo](demo.gif)
+
 ## What it does
 
 - **ClientQuery bridge** to the TeamSpeak client (auth via API key).
