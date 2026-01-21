@@ -97,7 +97,7 @@ These expect the repo to live at `~/tsraild` and log to `~/.local/share/tsrail/t
 
 ## Overlay assets
 
-Assets are served from `~/.local/share/tsrail/assets/` and can be overridden per user. Recommended layout:
+Assets are served from `~/.local/share/tsrail/assets/` and can be overridden per user. The daemon accepts avatar assets in `svg`, `png`, `apng`, `gif`, `webp`, and `avif` formats, so animated GIF/APNG avatars are supported. Recommended layout:
 
 ```
 assets/frames/tv_idle.png
