@@ -69,7 +69,7 @@ A minimal `config.json` looks like this:
 }
 ```
 
-You can update these values via the control socket (`tsrailctl policy`, `approve-uid`, etc.) and they will persist.
+You can update these values via the control socket (`tsrailctl policy`, `approve-nick`, etc.) and they will persist.
 
 ## Control socket commands
 
@@ -78,10 +78,10 @@ You can update these values via the control socket (`tsrailctl policy`, `approve
 ```bash
 scripts/tsrailctl status
 scripts/tsrailctl key-status
-scripts/tsrailctl approve-uid <uid>
-scripts/tsrailctl approve-nick <nickname>
+scripts/tsrailctl channels
+scripts/tsrailctl approve-nick "Streamer Name"
 scripts/tsrailctl ignore-uid <uid>
-scripts/tsrailctl policy target-channel 7
+scripts/tsrailctl policy target-channel "OBS Audio"
 scripts/tsrailctl dump-state
 ```
 
@@ -97,7 +97,9 @@ These expect the repo to live at `~/tsraild` and log to `~/.local/share/tsrail/t
 
 ## Overlay assets
 
-Assets are served from `~/.local/share/tsrail/assets/` and can be overridden per user. The daemon accepts avatar assets in `svg`, `png`, `apng`, `gif`, `webp`, and `avif` formats, so animated GIF/APNG avatars are supported. Recommended layout:
+Assets are served from `~/.local/share/tsrail/assets/` and can be overridden per user. The daemon accepts avatar assets in `svg`, `png`, `apng`, `gif`, `webp`, and `avif` formats, so animated GIF/APNG avatars are supported. When an approved user first appears in the rail, the daemon creates `assets/users/<uid>/` and seeds it with default `avatar.svg` and `avatar_talk.svg` if no avatar files exist yet.
+
+Recommended layout:
 
 ```
 assets/frames/tv_idle.png
@@ -106,7 +108,7 @@ assets/users/<uid>/avatar.png
 assets/users/<uid>/avatar_talk.gif
 ```
 
-If a talk asset is missing, the idle asset is reused. Default example assets live in the repo’s `assets/` directory.
+If a talk asset is missing, the idle asset is reused. You can replace avatar assets live under `~/.local/share/tsrail/assets/` and the next `/state.json` poll will reflect the new files. Default example assets live in the repo’s `assets/` directory.
 
 ## Development notes
 
