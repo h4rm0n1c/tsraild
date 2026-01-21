@@ -29,6 +29,13 @@ This document captures the intended behavior and integration points for the TS R
 - **target-channel:** Limit tracking and policy enforcement to the configured channel ID.
 - **show-ignored:** When enabled, may include ignored users in exported state; otherwise they remain hidden.
 
+### Visibility and Access Model
+
+- **Unknown users** are present in the channel roster but not in the overlay by default. They only appear in `unknown_users[]` for discovery and approval workflows.
+- **Approved users** are eligible to appear in `users[]`, subject to the `require-approved` and `show-ignored` toggles.
+- **Ignored users** are always suppressed from `users[]` unless `show-ignored` is enabled, in which case they can appear in the overlay with `ignored=true`.
+- **The bot’s own client** is always excluded from rail output.
+
 ## Control Socket Protocol
 
 - **Listener:** UNIX socket at `${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/tsrail.sock`, mode `0700`, owned by the user running the daemon.
@@ -85,4 +92,9 @@ that start/stop the daemon in `~/tsraild/`, track a PID file under
     - `assets/frames/` — shared monitor frames (idle/talk variants), e.g., `tv_idle.png`, `tv_talk.png`.
     - `assets/users/<uid>/` — per-user avatars, e.g., `avatar.png` (idle), `avatar.gif` or `avatar.apng` (talk).
   - If a talk asset is missing for a user, reuse the idle asset for both states.
+- **User asset provisioning:** when an approved user is present in `users[]`, the daemon ensures
+  `assets/users/<uid>/` exists and seeds it with default `avatar.svg`/`avatar_talk.svg` from the example
+  assets if no avatar files already exist. This keeps every approved user renderable without manual setup.
+- **Live updates:** asset paths are resolved on each `/state.json` build, so replacing files under
+  `~/.local/share/tsrail/assets/` swaps avatars and frames without restarting the daemon.
 - **Overlay defaults:** Provide placeholder assets for users lacking custom files, and ensure transparent backgrounds for compositing in OBS.
