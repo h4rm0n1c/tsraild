@@ -64,14 +64,15 @@ A minimal `config.json` looks like this:
     "auto-mute-unknown": true,
     "require-approved": true,
     "target-channel": 7,
-    "show-ignored": false
+    "show-ignored": false,
+    "include-bot": false
   },
   "http": { "host": "127.0.0.1", "port": 17891 },
   "clientquery": { "host": "127.0.0.1", "port": 25639 }
 }
 ```
 
-You can update these values via the control socket (`tsrailctl policy`, `approve-nick`, etc.) and they will persist.
+You can update these values via the control socket (`tsrailctl policy`, `approve-nick`, etc.) and they will persist. Use `policy include-bot true` if you want the daemon’s own client to appear on the rail.
 
 ## Control socket commands
 
