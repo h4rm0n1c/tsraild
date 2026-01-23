@@ -72,7 +72,7 @@ A minimal `config.json` looks like this:
 }
 ```
 
-You can update these values via the control socket (`tsrailctl policy`, `approve-nick`, etc.) and they will persist. Use `policy include-bot true` if you want the daemon’s own client to appear on the rail.
+You can update these values via the control socket (`tsrailctl policy`, `approve-nick`, etc.) and they will persist. Use `policy include-bot true` if you want the daemon’s own client to appear on the rail (avatars will load from the bot’s UID folder, or `assets/users/bot/` if the UID is not yet known).
 
 ## Control socket commands
 

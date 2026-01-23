@@ -713,10 +713,11 @@ class TSRailState:
             and self.own_clid
             and (target_channel is None or self.server_channel_id == target_channel)
         ):
+            bot_uid = self.own_uid or "bot"
             users.append(
                 Client(
                     clid=self.own_clid,
-                    uid=self.own_uid or "",
+                    uid=bot_uid,
                     nickname=self.own_nickname or "TS Rail",
                     channel_id=self.server_channel_id,
                     talking=self.own_talking,

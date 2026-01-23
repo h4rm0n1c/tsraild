@@ -28,7 +28,7 @@ This document captures the intended behavior and integration points for the TS R
 - **ignore_uids:** Users in this list are tracked but never emitted in `users[]`.
 - **target-channel:** Limit tracking and policy enforcement to the configured channel ID.
 - **show-ignored:** When enabled, may include ignored users in exported state; otherwise they remain hidden.
-- **include-bot:** When enabled, include the daemon’s own TeamSpeak client in rail output (counts and `users[]`), subject to the same channel filtering.
+- **include-bot:** When enabled, include the daemon’s own TeamSpeak client in rail output (counts and `users[]`), subject to the same channel filtering. The bot uses its own UID for assets when available, otherwise it falls back to the `assets/users/bot/` folder.
 
 ### Visibility and Access Model
 
