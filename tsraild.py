@@ -60,6 +60,7 @@ class Policies:
     target_channel: Optional[int] = None
     target_channel_name: Optional[str] = None
     show_ignored: bool = False
+    include_bot: bool = False
 
     @classmethod
     def from_dict(cls, data: Dict[str, object]) -> "Policies":
@@ -69,6 +70,7 @@ class Policies:
             target_channel=data.get("target-channel") or data.get("target_channel"),
             target_channel_name=data.get("target-channel-name") or data.get("target_channel_name"),
             show_ignored=bool(data.get("show-ignored", data.get("show_ignored", False))),
+            include_bot=bool(data.get("include-bot", data.get("include_bot", False))),
         )
 
     def to_dict(self) -> Dict[str, object]:
@@ -78,6 +80,7 @@ class Policies:
             "target-channel": self.target_channel,
             "target-channel-name": self.target_channel_name,
             "show-ignored": self.show_ignored,
+            "include-bot": self.include_bot,
         }
 
 
@@ -425,6 +428,7 @@ class TSRailState:
         self.own_clid: Optional[str] = None
         self.own_uid: Optional[str] = None
         self.own_nickname: Optional[str] = None
+        self.own_talking: bool = False
         self.last_ts: float = time.time()
         self.connection: Optional[ClientQueryConnection] = None
 
@@ -447,6 +451,7 @@ class TSRailState:
         self.own_clid = None
         self.own_uid = None
         self.own_nickname = None
+        self.own_talking = False
         self.schandlerid = None
 
     def handle_notification(self, line: str) -> None:
@@ -608,6 +613,8 @@ class TSRailState:
     def _talk_status(self, data: Dict[str, str]) -> None:
         clid = data.get("clid")
         status = data.get("status")
+        if clid and clid == self.own_clid:
+            self.own_talking = status == "1"
         if clid and clid in self.clients:
             self.clients[clid].talking = status == "1"
 
@@ -670,6 +677,12 @@ class TSRailState:
         present_approved = 0
         present_unknown = 0
         present_ignored = 0
+        if (
+            self.config.policies.include_bot
+            and self.own_clid
+            and (target_channel is None or self.server_channel_id == target_channel)
+        ):
+            present_approved += 1
         for client in self.clients.values():
             if self.own_clid and client.clid == self.own_clid:
                 continue
@@ -695,6 +708,23 @@ class TSRailState:
         if self.config.policies.target_channel and target_channel is None:
             return []
         users: List[Client] = []
+        if (
+            self.config.policies.include_bot
+            and self.own_clid
+            and (target_channel is None or self.server_channel_id == target_channel)
+        ):
+            bot_uid = self.own_uid or "bot"
+            users.append(
+                Client(
+                    clid=self.own_clid,
+                    uid=bot_uid,
+                    nickname=self.own_nickname or "TS Rail",
+                    channel_id=self.server_channel_id,
+                    talking=self.own_talking,
+                    approved=True,
+                    ignored=False,
+                )
+            )
         for client in self.clients.values():
             if self.own_clid and client.clid == self.own_clid:
                 continue
@@ -979,6 +1009,8 @@ class ControlSocket:
                     await self.conn._refresh_clients()
             elif name == "show-ignored":
                 self.state.config.policies.show_ignored = bool(value)
+            elif name == "include-bot":
+                self.state.config.policies.include_bot = bool(value)
             else:
                 return "error unknown policy\n"
             self.state.config.save()

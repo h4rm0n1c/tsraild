@@ -6,7 +6,7 @@ This document captures the intended behavior and integration points for the TS R
 
 - **ClientQuery bridge:** Maintain a resilient connection to the TeamSpeak ClientQuery interface, authenticate using the stored API key, and register for notifications. Track the monitored server handler and channel.
 - **State tracking:** Keep an in-memory map of clients in the target channel, including UID, clid, nickname, talking status, and flags (`approved`, `ignored`, `muted_by_us`). Derive overlay-ready user lists with filtering and sorting.
-- **Policy enforcement:** Apply policies such as `auto-mute-unknown`, `require-approved`, `ignore_uids`, `target-channel`, and `show-ignored` when updating state and issuing ClientQuery commands.
+- **Policy enforcement:** Apply policies such as `auto-mute-unknown`, `require-approved`, `ignore_uids`, `target-channel`, `show-ignored`, and `include-bot` when updating state and issuing ClientQuery commands.
 - **Control socket:** Offer a UNIX control socket for configuration, inspection, and policy changes.
 - **HTTP service:** Serve `/state.json` for overlay consumption, plus optional static overlay and asset hosting.
 - **Storage:** Read and write configuration and assets in user-specific locations under `~/.config/tsrail/` and `~/.local/share/tsrail/`.
@@ -28,13 +28,14 @@ This document captures the intended behavior and integration points for the TS R
 - **ignore_uids:** Users in this list are tracked but never emitted in `users[]`.
 - **target-channel:** Limit tracking and policy enforcement to the configured channel ID.
 - **show-ignored:** When enabled, may include ignored users in exported state; otherwise they remain hidden.
+- **include-bot:** When enabled, include the daemon’s own TeamSpeak client in rail output (counts and `users[]`), subject to the same channel filtering. The bot uses its own UID for assets when available, otherwise it falls back to the `assets/users/bot/` folder.
 
 ### Visibility and Access Model
 
 - **Unknown users** are present in the channel roster but not in the overlay by default. They only appear in `unknown_users[]` for discovery and approval workflows.
 - **Approved users** are eligible to appear in `users[]`, subject to the `require-approved` and `show-ignored` toggles.
 - **Ignored users** are always suppressed from `users[]` unless `show-ignored` is enabled, in which case they can appear in the overlay with `ignored=true`.
-- **The bot’s own client** is always excluded from rail output.
+- **The bot’s own client** is excluded from rail output unless `include-bot` is enabled.
 
 ## Control Socket Protocol
 
@@ -48,7 +49,7 @@ This document captures the intended behavior and integration points for the TS R
   - `unapprove-uid <uid>`: remove an approved user.
   - `approved-list`: list all approved entries.
   - `ignore-uid <uid>` / `unignore-uid <uid>` / `ignore-list`: manage the ignore set.
-  - `policy <name> <value>`: update runtime policies (`auto-mute-unknown`, `require-approved`, `target-channel`, `show-ignored`).
+  - `policy <name> <value>`: update runtime policies (`auto-mute-unknown`, `require-approved`, `target-channel`, `show-ignored`, `include-bot`).
 
 ## Helper Script
 
